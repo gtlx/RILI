@@ -330,3 +330,32 @@ src-tauri/
 - 为version、is_deleted字段添加索引
 - 优化查询性能
 - 支持软删除(is_deleted)保留历史数据
+
+## 7. 技术选型说明
+
+### 7.1 Rust依赖
+```
+rusqlite = { version = "0.32", features = ["bundled"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+thiserror = "2"
+log = "0.4"
+env_logger = "0.11"
+dirs = "6"
+zip = "2"
+```
+
+### 7.2 数据库选型
+**SQLite 已满足需求，无需 RocksDB/LevelDB**：
+
+| 因素 | SQLite | 结论 |
+|------|--------|------|
+| 单用户 | ✅ | 个人应用无需高并发 |
+| 轻量嵌入 | ✅ | 桌面应用无需独立服务 |
+| 跨平台 | ✅ | Tauri 天然支持 |
+| 结构化数据 | ✅ | SQL适合记账数据 |
+| 同步能力 | ✅ | 增量同步+版本控制已实现 |
+
+**结论**: SQLite + 增量同步 + 数据校验方案完全满足需求
