@@ -10,6 +10,9 @@ export interface Transaction {
   note?: string;
   created_at?: string;
   updated_at?: string;
+  version?: number;
+  is_deleted?: boolean;
+  checksum?: string;
 }
 
 export interface Category {
@@ -27,6 +30,9 @@ export interface Note {
   file_path: string;
   created_at?: string;
   updated_at?: string;
+  version?: number;
+  is_deleted?: boolean;
+  checksum?: string;
 }
 
 export interface WeeklyAnalysis {
@@ -49,6 +55,12 @@ export interface MonthlyAnalysis {
   expense_by_category: { category: string; amount: number }[];
   compare_to_last_month: number;
   top_categories: { category: string; amount: number }[];
+}
+
+export interface SyncMetadata {
+  last_sync_version: number;
+  last_sync_time: string;
+  checksum: string;
 }
 
 interface AppState {
@@ -86,9 +98,16 @@ interface AppState {
   };
   setSyncConfig: (config: AppState['syncConfig']) => void;
   syncData: () => Promise<void>;
+  syncDataIncremental: () => Promise<void>;
   testSyncConnection: () => Promise<boolean>;
   lastSyncTime: string | null;
   loadLastSyncTime: () => Promise<void>;
+  
+  syncMetadata: SyncMetadata | null;
+  loadSyncMetadata: () => Promise<void>;
+  
+  validateDataIntegrity: () => Promise<boolean>;
+  computeFullChecksum: () => Promise<string>;
   
   exportData: () => Promise<string>;
   importData: (jsonData: string, merge: boolean) => Promise<void>;
@@ -186,6 +205,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { syncConfig } = get();
     await invoke('sync_data', { config: syncConfig });
     await get().loadLastSyncTime();
+    await get().loadSyncMetadata();
+  },
+  syncDataIncremental: async () => {
+    const { syncConfig } = get();
+    await invoke('sync_data_incremental', { config: syncConfig });
+    await get().loadLastSyncTime();
+    await get().loadSyncMetadata();
   },
   testSyncConnection: async () => {
     const { syncConfig } = get();
@@ -195,6 +221,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   loadLastSyncTime: async () => {
     const time = await invoke<string | null>('get_last_sync_time');
     set({ lastSyncTime: time });
+  },
+  
+  syncMetadata: null,
+  loadSyncMetadata: async () => {
+    const metadata = await invoke<SyncMetadata>('get_sync_metadata');
+    set({ syncMetadata: metadata });
+  },
+  
+  validateDataIntegrity: async () => {
+    return await invoke<boolean>('validate_data_integrity');
+  },
+  computeFullChecksum: async () => {
+    return await invoke<string>('compute_full_checksum');
   },
   
   exportData: async () => {

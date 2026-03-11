@@ -2,8 +2,9 @@ use rusqlite::{Connection, Result, params};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use chrono::{NaiveDate, Local, Datelike};
+use chrono::{NaiveDate, Local, Datelike, Utc};
 use thiserror::Error;
+use sha2::{Sha256, Digest};
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -13,6 +14,8 @@ pub enum AppError {
     Io(#[from] std::io::Error),
     #[error("Not found")]
     NotFound,
+    #[error("Sync error: {0}")]
+    Sync(String),
 }
 
 impl Serialize for AppError {
@@ -34,6 +37,9 @@ pub struct Transaction {
     pub note: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+    pub version: i64,
+    pub is_deleted: bool,
+    pub checksum: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -53,6 +59,9 @@ pub struct Note {
     pub file_path: String,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+    pub version: i64,
+    pub is_deleted: bool,
+    pub checksum: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -97,6 +106,29 @@ pub struct MonthlyAnalysis {
     pub top_categories: Vec<CategoryAmount>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SyncQueueItem {
+    pub id: i64,
+    pub table_name: String,
+    pub record_id: i64,
+    pub operation: String,
+    pub timestamp: String,
+    pub processed: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SyncMetadata {
+    pub last_sync_version: i64,
+    pub last_sync_time: String,
+    pub checksum: String,
+}
+
+fn compute_checksum(data: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
 pub struct Database {
     conn: Mutex<Connection>,
     data_dir: PathBuf,
@@ -123,6 +155,7 @@ impl Database {
         
         db.init_tables()?;
         db.init_default_categories()?;
+        db.init_sync_tracking()?;
         
         Ok(db)
     }
@@ -139,7 +172,10 @@ impl Database {
                 category TEXT NOT NULL,
                 note TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                version INTEGER DEFAULT 1,
+                is_deleted INTEGER DEFAULT 0,
+                checksum TEXT
             )",
             [],
         )?;
@@ -162,7 +198,10 @@ impl Database {
                 date TEXT NOT NULL UNIQUE,
                 file_path TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                version INTEGER DEFAULT 1,
+                is_deleted INTEGER DEFAULT 0,
+                checksum TEXT
             )",
             [],
         )?;
@@ -186,7 +225,73 @@ impl Database {
         )?;
         
         conn.execute(
+            "CREATE TABLE IF NOT EXISTS sync_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name TEXT NOT NULL,
+                record_id INTEGER NOT NULL,
+                operation TEXT NOT NULL,
+                timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                processed INTEGER DEFAULT 0
+            )",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS sync_metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )",
+            [],
+        )?;
+        
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_version ON transactions(version)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_deleted ON transactions(is_deleted)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_date ON notes(date)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_version ON notes(version)",
+            [],
+        )?;
+        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sync_queue_processed ON sync_queue(processed)",
+            [],
+        )?;
+        
+        Ok(())
+    }
+    
+    fn init_sync_tracking(&self) -> Result<(), AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        conn.execute(
+            "INSERT OR IGNORE INTO sync_metadata (key, value) VALUES ('last_sync_version', '0')",
+            [],
+        )?;
+        
+        conn.execute(
+            "INSERT OR IGNORE INTO sync_metadata (key, value) VALUES ('last_sync_time', '')",
+            [],
+        )?;
+        
+        conn.execute(
+            "INSERT OR IGNORE INTO sync_metadata (key, value) VALUES ('checksum', '')",
             [],
         )?;
         
@@ -229,37 +334,123 @@ impl Database {
         Ok(())
     }
     
+    fn add_to_sync_queue(&self, table_name: &str, record_id: i64, operation: &str) -> Result<(), AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        conn.execute(
+            "INSERT INTO sync_queue (table_name, record_id, operation) VALUES (?1, ?2, ?3)",
+            params![table_name, record_id, operation],
+        )?;
+        
+        Ok(())
+    }
+    
     pub fn get_notes_dir(&self) -> PathBuf {
         self.data_dir.join("notes")
+    }
+    
+    fn compute_record_checksum(&self, t: &Transaction) -> String {
+        let data = format!("{}|{}|{}|{}|{}|{}",
+            t.date, t.amount, t.transaction_type, t.category, 
+            t.note.as_deref().unwrap_or(""), t.is_deleted
+        );
+        compute_checksum(&data)
     }
     
     // Transaction methods
     pub fn add_transaction(&self, t: Transaction) -> Result<i64, AppError> {
         let conn = self.conn.lock().unwrap();
+        let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         
         conn.execute(
-            "INSERT INTO transactions (date, amount, transaction_type, category, note) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![t.date, t.amount, t.transaction_type, t.category, t.note],
+            "INSERT INTO transactions (date, amount, transaction_type, category, note, version, is_deleted, checksum, created_at, updated_at) 
+             VALUES (?1, ?2, ?3, ?4, ?5, 1, 0, ?6, ?7, ?7)",
+            params![t.date, t.amount, t.transaction_type, t.category, t.note, "", now],
         )?;
         
-        Ok(conn.last_insert_rowid())
+        let id = conn.last_insert_rowid();
+        
+        conn.execute(
+            "UPDATE transactions SET checksum = ?1 WHERE id = ?2",
+            params![self.compute_record_checksum(&Transaction { id: Some(id), ..t, ..Transaction { version: 1, is_deleted: false, checksum: None, ..Default::default() } }), id],
+        )?;
+        
+        drop(conn);
+        
+        self.add_to_sync_queue("transactions", id, "INSERT")?;
+        
+        Ok(id)
     }
     
     pub fn update_transaction(&self, t: Transaction) -> Result<(), AppError> {
         let conn = self.conn.lock().unwrap();
+        let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        
+        let version: i64 = conn.query_row(
+            "SELECT version FROM transactions WHERE id = ?1",
+            params![t.id],
+            |row| row.get(0),
+        )?;
         
         conn.execute(
-            "UPDATE transactions SET date = ?1, amount = ?2, transaction_type = ?3, category = ?4, note = ?5, updated_at = CURRENT_TIMESTAMP WHERE id = ?6",
-            params![t.date, t.amount, t.transaction_type, t.category, t.note, t.id],
+            "UPDATE transactions SET date = ?1, amount = ?2, transaction_type = ?3, category = ?4, note = ?5, version = ?6, updated_at = ?7, checksum = '' WHERE id = ?8",
+            params![t.date, t.amount, t.transaction_type, t.category, t.note, version + 1, now, t.id],
         )?;
+        
+        let id = t.id.unwrap();
+        
+        let mut stmt = conn.prepare(
+            "SELECT id, date, amount, transaction_type, category, note, is_deleted FROM transactions WHERE id = ?1"
+        )?;
+        
+        let record = stmt.query_row(params![id], |row| {
+            Ok(Transaction {
+                id: Some(row.get(0)?),
+                date: row.get(1)?,
+                amount: row.get(2)?,
+                transaction_type: row.get(3)?,
+                category: row.get(4)?,
+                note: row.get(5)?,
+                created_at: None,
+                updated_at: None,
+                version: version + 1,
+                is_deleted: row.get::<_, i32>(6)? == 1,
+                checksum: None,
+            })
+        })?;
+        
+        let checksum = self.compute_record_checksum(&record);
+        
+        conn.execute(
+            "UPDATE transactions SET checksum = ?1 WHERE id = ?2",
+            params![checksum, id],
+        )?;
+        
+        drop(conn);
+        
+        self.add_to_sync_queue("transactions", id, "UPDATE")?;
         
         Ok(())
     }
     
     pub fn delete_transaction(&self, id: i64) -> Result<(), AppError> {
         let conn = self.conn.lock().unwrap();
+        let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         
-        conn.execute("DELETE FROM transactions WHERE id = ?1", params![id])?;
+        let version: i64 = conn.query_row(
+            "SELECT version FROM transactions WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )?;
+        
+        conn.execute(
+            "UPDATE transactions SET is_deleted = 1, version = ?1, updated_at = ?2, checksum = '' WHERE id = ?3",
+            params![version + 1, now, id],
+        )?;
+        
+        drop(conn);
+        
+        self.add_to_sync_queue("transactions", id, "DELETE")?;
         
         Ok(())
     }
@@ -268,8 +459,8 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         
         let mut stmt = conn.prepare(
-            "SELECT id, date, amount, transaction_type, category, note, created_at, updated_at 
-             FROM transactions WHERE date >= ?1 AND date <= ?2 ORDER BY date DESC"
+            "SELECT id, date, amount, transaction_type, category, note, created_at, updated_at, version, is_deleted, checksum 
+             FROM transactions WHERE date >= ?1 AND date <= ?2 AND is_deleted = 0 ORDER BY date DESC"
         )?;
         
         let rows = stmt.query_map(params![start_date, end_date], |row| {
@@ -282,6 +473,9 @@ impl Database {
                 note: row.get(5)?,
                 created_at: row.get(6)?,
                 updated_at: row.get(7)?,
+                version: row.get(8)?,
+                is_deleted: row.get::<_, i32>(9)? == 1,
+                checksum: row.get(10)?,
             })
         })?;
         
@@ -297,8 +491,8 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         
         let mut stmt = conn.prepare(
-            "SELECT id, date, amount, transaction_type, category, note, created_at, updated_at 
-             FROM transactions ORDER BY date DESC"
+            "SELECT id, date, amount, transaction_type, category, note, created_at, updated_at, version, is_deleted, checksum 
+             FROM transactions WHERE is_deleted = 0 ORDER BY date DESC"
         )?;
         
         let rows = stmt.query_map([], |row| {
@@ -311,6 +505,41 @@ impl Database {
                 note: row.get(5)?,
                 created_at: row.get(6)?,
                 updated_at: row.get(7)?,
+                version: row.get(8)?,
+                is_deleted: row.get::<_, i32>(9)? == 1,
+                checksum: row.get(10)?,
+            })
+        })?;
+        
+        let mut transactions = Vec::new();
+        for row in rows {
+            transactions.push(row?);
+        }
+        
+        Ok(transactions)
+    }
+    
+    pub fn get_transactions_since_version(&self, version: i64) -> Result<Vec<Transaction>, AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        let mut stmt = conn.prepare(
+            "SELECT id, date, amount, transaction_type, category, note, created_at, updated_at, version, is_deleted, checksum 
+             FROM transactions WHERE version > ?1 ORDER BY version ASC"
+        )?;
+        
+        let rows = stmt.query_map(params![version], |row| {
+            Ok(Transaction {
+                id: Some(row.get(0)?),
+                date: row.get(1)?,
+                amount: row.get(2)?,
+                transaction_type: row.get(3)?,
+                category: row.get(4)?,
+                note: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                version: row.get(8)?,
+                is_deleted: row.get::<_, i32>(9)? == 1,
+                checksum: row.get(10)?,
             })
         })?;
         
@@ -366,11 +595,20 @@ impl Database {
         std::fs::write(&file_path, content)?;
         
         let conn = self.conn.lock().unwrap();
+        let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let checksum = compute_checksum(content);
         
         conn.execute(
-            "INSERT OR REPLACE INTO notes (date, file_path, updated_at) VALUES (?1, ?2, CURRENT_TIMESTAMP)",
-            params![date, file_path.to_string_lossy().to_string()],
+            "INSERT OR REPLACE INTO notes (date, file_path, version, is_deleted, checksum, updated_at) 
+             VALUES (?1, ?2, COALESCE((SELECT version + 1 FROM notes WHERE date = ?1), 1), 0, ?3, ?4)",
+            params![date, file_path.to_string_lossy().to_string(), checksum, now],
         )?;
+        
+        let id = conn.last_insert_rowid();
+        
+        drop(conn);
+        
+        self.add_to_sync_queue("notes", id, "INSERT")?;
         
         Ok(())
     }
@@ -390,7 +628,8 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         
         let mut stmt = conn.prepare(
-            "SELECT id, date, file_path, created_at, updated_at FROM notes ORDER BY date DESC"
+            "SELECT id, date, file_path, created_at, updated_at, version, is_deleted, checksum 
+             FROM notes WHERE is_deleted = 0 ORDER BY date DESC"
         )?;
         
         let rows = stmt.query_map([], |row| {
@@ -400,6 +639,38 @@ impl Database {
                 file_path: row.get(2)?,
                 created_at: row.get(3)?,
                 updated_at: row.get(4)?,
+                version: row.get(5)?,
+                is_deleted: row.get::<_, i32>(6)? == 1,
+                checksum: row.get(7)?,
+            })
+        })?;
+        
+        let mut notes = Vec::new();
+        for row in rows {
+            notes.push(row?);
+        }
+        
+        Ok(notes)
+    }
+    
+    pub fn get_notes_since_version(&self, version: i64) -> Result<Vec<Note>, AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        let mut stmt = conn.prepare(
+            "SELECT id, date, file_path, created_at, updated_at, version, is_deleted, checksum 
+             FROM notes WHERE version > ?1 ORDER BY version ASC"
+        )?;
+        
+        let rows = stmt.query_map(params![version], |row| {
+            Ok(Note {
+                id: Some(row.get(0)?),
+                date: row.get(1)?,
+                file_path: row.get(2)?,
+                created_at: row.get(3)?,
+                updated_at: row.get(4)?,
+                version: row.get(5)?,
+                is_deleted: row.get::<_, i32>(6)? == 1,
+                checksum: row.get(7)?,
             })
         })?;
         
@@ -418,8 +689,30 @@ impl Database {
         }
         
         let conn = self.conn.lock().unwrap();
+        let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
         
-        conn.execute("DELETE FROM notes WHERE date = ?1", params![date])?;
+        let version: i64 = conn.query_row(
+            "SELECT version FROM notes WHERE date = ?1",
+            params![date],
+            |row| row.get(0),
+        ).unwrap_or(1);
+        
+        conn.execute(
+            "UPDATE notes SET is_deleted = 1, version = ?1, updated_at = ?2 WHERE date = ?3",
+            params![version + 1, now, date],
+        )?;
+        
+        let id: i64 = conn.query_row(
+            "SELECT id FROM notes WHERE date = ?1",
+            params![date],
+            |row| row.get(0),
+        ).unwrap_or(0);
+        
+        drop(conn);
+        
+        if id > 0 {
+            self.add_to_sync_queue("notes", id, "DELETE")?;
+        }
         
         Ok(())
     }
@@ -440,22 +733,20 @@ impl Database {
         let last_start_str = last_week_start.format("%Y-%m-%d").to_string();
         let last_end_str = last_week_end.format("%Y-%m-%d").to_string();
         
-        // Total income/expense this week
         let total_income: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2",
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2 AND is_deleted = 0",
             params![start_str, end_str],
             |row| row.get(0),
         )?;
         
         let total_expense: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2",
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 AND is_deleted = 0",
             params![start_str, end_str],
             |row| row.get(0),
         )?;
         
-        // Last week totals
         let last_week_expense: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2",
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 AND is_deleted = 0",
             params![last_start_str, last_end_str],
             |row| row.get(0),
         )?;
@@ -466,9 +757,8 @@ impl Database {
             0.0
         };
         
-        // Income by category
         let mut stmt = conn.prepare(
-            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2 GROUP BY category"
+            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2 AND is_deleted = 0 GROUP BY category"
         )?;
         let income_by_category: Vec<CategoryAmount> = stmt.query_map(params![start_str, end_str], |row| {
             Ok(CategoryAmount {
@@ -477,9 +767,8 @@ impl Database {
             })
         })?.filter_map(|r| r.ok()).collect();
         
-        // Expense by category
         let mut stmt = conn.prepare(
-            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 GROUP BY category"
+            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 AND is_deleted = 0 GROUP BY category"
         )?;
         let expense_by_category: Vec<CategoryAmount> = stmt.query_map(params![start_str, end_str], |row| {
             Ok(CategoryAmount {
@@ -488,14 +777,13 @@ impl Database {
             })
         })?.filter_map(|r| r.ok()).collect();
         
-        // Daily expense
         let mut daily_expense = Vec::new();
         for i in 0..7 {
             let day = start_date + chrono::Duration::days(i);
             let day_str = day.format("%Y-%m-%d").to_string();
             
             let amount: f64 = conn.query_row(
-                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date = ?1",
+                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date = ?1 AND is_deleted = 0",
                 params![day_str],
                 |row| row.get(0),
             )?;
@@ -543,19 +831,19 @@ impl Database {
         let last_end_str = last_month_end.format("%Y-%m-%d").to_string();
         
         let total_income: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2",
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2 AND is_deleted = 0",
             params![start_str, end_str],
             |row| row.get(0),
         )?;
         
         let total_expense: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2",
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 AND is_deleted = 0",
             params![start_str, end_str],
             |row| row.get(0),
         )?;
         
         let last_month_expense: f64 = conn.query_row(
-            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2",
+            "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 AND is_deleted = 0",
             params![last_start_str, last_end_str],
             |row| row.get(0),
         )?;
@@ -566,9 +854,8 @@ impl Database {
             0.0
         };
         
-        // Income by category
         let mut stmt = conn.prepare(
-            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2 GROUP BY category"
+            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'income' AND date >= ?1 AND date <= ?2 AND is_deleted = 0 GROUP BY category"
         )?;
         let income_by_category: Vec<CategoryAmount> = stmt.query_map(params![start_str, end_str], |row| {
             Ok(CategoryAmount {
@@ -577,9 +864,8 @@ impl Database {
             })
         })?.filter_map(|r| r.ok()).collect();
         
-        // Expense by category
         let mut stmt = conn.prepare(
-            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 GROUP BY category"
+            "SELECT category, SUM(amount) FROM transactions WHERE transaction_type = 'expense' AND date >= ?1 AND date <= ?2 AND is_deleted = 0 GROUP BY category"
         )?;
         let expense_by_category: Vec<CategoryAmount> = stmt.query_map(params![start_str, end_str], |row| {
             Ok(CategoryAmount {
@@ -588,7 +874,6 @@ impl Database {
             })
         })?.filter_map(|r| r.ok()).collect();
         
-        // Top categories
         let mut top_categories = expense_by_category.clone();
         top_categories.sort_by(|a, b| b.amount.partial_cmp(&a.amount).unwrap_or(std::cmp::Ordering::Equal));
         top_categories.truncate(5);
@@ -633,6 +918,164 @@ impl Database {
         Ok(())
     }
     
+    // Sync metadata methods
+    pub fn get_sync_metadata(&self) -> Result<SyncMetadata, AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        let last_sync_version: i64 = conn.query_row(
+            "SELECT value FROM sync_metadata WHERE key = 'last_sync_version'",
+            [],
+            |row| row.get::<_, String>(0),
+        ).map(|v| v.parse().unwrap_or(0)).unwrap_or(0);
+        
+        let last_sync_time: String = conn.query_row(
+            "SELECT value FROM sync_metadata WHERE key = 'last_sync_time'",
+            [],
+            |row| row.get(0),
+        ).unwrap_or_default();
+        
+        let checksum: String = conn.query_row(
+            "SELECT value FROM sync_metadata WHERE key = 'checksum'",
+            [],
+            |row| row.get(0),
+        ).unwrap_or_default();
+        
+        Ok(SyncMetadata {
+            last_sync_version,
+            last_sync_time,
+            checksum,
+        })
+    }
+    
+    pub fn update_sync_metadata(&self, version: i64, checksum: &str) -> Result<(), AppError> {
+        let conn = self.conn.lock().unwrap();
+        let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        
+        conn.execute(
+            "UPDATE sync_metadata SET value = ?1 WHERE key = 'last_sync_version'",
+            params![version.to_string()],
+        )?;
+        
+        conn.execute(
+            "UPDATE sync_metadata SET value = ?1 WHERE key = 'last_sync_time'",
+            params![now],
+        )?;
+        
+        conn.execute(
+            "UPDATE sync_metadata SET value = ?1 WHERE key = 'checksum'",
+            params![checksum],
+        )?;
+        
+        Ok(())
+    }
+    
+    pub fn get_pending_sync_items(&self) -> Result<Vec<SyncQueueItem>, AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        let mut stmt = conn.prepare(
+            "SELECT id, table_name, record_id, operation, timestamp, processed 
+             FROM sync_queue WHERE processed = 0 ORDER BY id ASC LIMIT 100"
+        )?;
+        
+        let rows = stmt.query_map([], |row| {
+            Ok(SyncQueueItem {
+                id: row.get(0)?,
+                table_name: row.get(1)?,
+                record_id: row.get(2)?,
+                operation: row.get(3)?,
+                timestamp: row.get(4)?,
+                processed: row.get::<_, i32>(5)? == 1,
+            })
+        })?;
+        
+        let mut items = Vec::new();
+        for row in rows {
+            items.push(row?);
+        }
+        
+        Ok(items)
+    }
+    
+    pub fn mark_sync_items_processed(&self, ids: &[i64]) -> Result<(), AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        for id in ids {
+            conn.execute(
+                "UPDATE sync_queue SET processed = 1 WHERE id = ?1",
+                params![id],
+            )?;
+        }
+        
+        Ok(())
+    }
+    
+    // Data validation
+    pub fn validate_data_integrity(&self) -> Result<bool, AppError> {
+        let conn = self.conn.lock().unwrap();
+        
+        let mut stmt = conn.prepare(
+            "SELECT id, date, amount, transaction_type, category, note, is_deleted FROM transactions WHERE is_deleted = 0"
+        )?;
+        
+        let rows = stmt.query_map([], |row| {
+            Ok(Transaction {
+                id: Some(row.get(0)?),
+                date: row.get(1)?,
+                amount: row.get(2)?,
+                transaction_type: row.get(3)?,
+                category: row.get(4)?,
+                note: row.get(5)?,
+                created_at: None,
+                updated_at: None,
+                version: 0,
+                is_deleted: row.get::<_, i32>(6)? == 1,
+                checksum: None,
+            })
+        })?;
+        
+        for row in rows {
+            let t = row?;
+            let data = format!("{}|{}|{}|{}|{}|{}",
+                t.date, t.amount, t.transaction_type, t.category, 
+                t.note.as_deref().unwrap_or(""), t.is_deleted
+            );
+            let computed = compute_checksum(&data);
+            
+            let stored_checksum: String = conn.query_row(
+                "SELECT checksum FROM transactions WHERE id = ?1",
+                params![t.id],
+                |row| row.get(0),
+            )?;
+            
+            if !stored_checksum.is_empty() && stored_checksum != computed {
+                log::warn!("Checksum mismatch for transaction {}", t.id.unwrap_or(0));
+                return Ok(false);
+            }
+        }
+        
+        Ok(true)
+    }
+    
+    pub fn compute_full_checksum(&self) -> Result<String, AppError> {
+        let transactions = self.get_all_transactions()?;
+        let notes = self.get_all_notes()?;
+        
+        let mut hasher = Sha256::new();
+        
+        for t in transactions {
+            hasher.update(format!("{}|{}|{}|{}|{}|{}|{}",
+                t.id.unwrap_or(0), t.date, t.amount, t.transaction_type, 
+                t.category, t.note.as_deref().unwrap_or(""), t.is_deleted
+            ).as_bytes());
+        }
+        
+        for n in notes {
+            hasher.update(format!("{}|{}|{}", n.id.unwrap_or(0), n.date, n.version).as_bytes());
+        }
+        
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+    
     // Export methods
     pub fn export_all_data(&self) -> Result<String, AppError> {
         let transactions = self.get_all_transactions()?;
@@ -648,7 +1091,12 @@ impl Database {
             categories: Vec<Category>,
             notes: Vec<Note>,
             exported_at: String,
+            version: i64,
+            checksum: String,
         }
+        
+        let checksum = self.compute_full_checksum()?;
+        let metadata = self.get_sync_metadata()?;
         
         let export_data = ExportData {
             transactions,
@@ -659,6 +1107,8 @@ impl Database {
             },
             notes,
             exported_at: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            version: metadata.last_sync_version + 1,
+            checksum,
         };
         
         Ok(serde_json::to_string_pretty(&export_data)?)
@@ -680,10 +1130,18 @@ impl Database {
         }
         
         for t in data.transactions {
-            conn.execute(
-                "INSERT INTO transactions (date, amount, transaction_type, category, note) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![t.date, t.amount, t.transaction_type, t.category, t.note],
-            )?;
+            if merge {
+                conn.execute(
+                    "INSERT OR REPLACE INTO transactions (date, amount, transaction_type, category, note, version, is_deleted, checksum) 
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    params![t.date, t.amount, t.transaction_type, t.category, t.note, t.version, t.is_deleted as i32, t.checksum],
+                )?;
+            } else {
+                conn.execute(
+                    "INSERT INTO transactions (date, amount, transaction_type, category, note) VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![t.date, t.amount, t.transaction_type, t.category, t.note],
+                )?;
+            }
         }
         
         for c in data.categories {

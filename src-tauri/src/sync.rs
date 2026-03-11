@@ -1,15 +1,21 @@
-use crate::db::Database;
+use crate::db::{AppError, Database, Note, SyncMetadata, Transaction};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::sync::Arc;
-use tokio::fs;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SyncConfig {
     pub server_url: String,
     pub username: String,
     pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct IncrementalSyncData {
+    version: i64,
+    transactions: Vec<Transaction>,
+    notes: Vec<Note>,
+    checksum: String,
 }
 
 pub struct SyncService {
@@ -26,10 +32,8 @@ impl SyncService {
     }
     
     pub async fn sync(&self, config: &SyncConfig) -> Result<String, String> {
-        // Upload local data to server
         let data = self.db.export_all_data().map_err(|e| e.to_string())?;
         
-        // Create WebDAV client request
         let url = format!("{}/rili-data.json", config.server_url.trim_end_matches('/'));
         
         let response = self.client
@@ -45,7 +49,6 @@ impl SyncService {
             return Err(format!("Upload failed: {}", response.status()));
         }
         
-        // Download remote data if exists
         let download_url = format!("{}/rili-data.json", config.server_url.trim_end_matches('/'));
         
         if let Ok(response) = self.client
@@ -56,25 +59,105 @@ impl SyncService {
         {
             if response.status().is_success() {
                 if let Ok(remote_data) = response.text().await {
-                    // Merge data (remote takes precedence for conflicts)
                     let _ = self.db.import_data(&remote_data, true);
                 }
             }
         }
         
-        // Sync notes directory
         self.sync_notes(config).await?;
         
-        self.db.add_sync_log("success", "Sync completed successfully").ok();
+        let checksum = self.db.compute_full_checksum().map_err(|e| e.to_string())?;
+        let metadata = self.db.get_sync_metadata().map_err(|e| e.to_string())?;
+        self.db.update_sync_metadata(metadata.last_sync_version + 1, &checksum).map_err(|e| e.to_string())?;
+        
+        self.db.add_sync_log("success", "Full sync completed successfully").ok();
         
         Ok("Sync completed".to_string())
+    }
+    
+    pub async fn sync_incremental(&self, config: &SyncConfig) -> Result<String, String> {
+        let metadata = self.db.get_sync_metadata().map_err(|e| e.to_string())?;
+        
+        let transactions = self.db.get_transactions_since_version(metadata.last_sync_version)
+            .map_err(|e| e.to_string())?;
+        
+        let notes = self.db.get_notes_since_version(metadata.last_sync_version)
+            .map_err(|e| e.to_string())?;
+        
+        if transactions.is_empty() && notes.is_empty() {
+            self.db.add_sync_log("success", "No changes to sync").ok();
+            return Ok("No changes to sync".to_string());
+        }
+        
+        let sync_data = IncrementalSyncData {
+            version: metadata.last_sync_version + 1,
+            transactions: transactions.clone(),
+            notes: notes.clone(),
+            checksum: String::new(),
+        };
+        
+        let json_data = serde_json::to_string(&sync_data).map_err(|e| e.to_string())?;
+        
+        let url = format!("{}/rili-incremental/{}.json", 
+            config.server_url.trim_end_matches('/'), 
+            metadata.last_sync_version + 1
+        );
+        
+        let response = self.client
+            .put(&url)
+            .basic_auth(&config.username, Some(&config.password))
+            .header("Content-Type", "application/json")
+            .body(json_data)
+            .send()
+            .await
+            .map_err(|e| format!("Network error: {}", e))?;
+        
+        if !response.status().is_success() {
+            return Err(format!("Incremental sync upload failed: {}", response.status()));
+        }
+        
+        for note in &notes {
+            if !note.is_deleted {
+                self.sync_single_note(config, &note).await?;
+            }
+        }
+        
+        let full_checksum = self.db.compute_full_checksum().map_err(|e| e.to_string())?;
+        self.db.update_sync_metadata(metadata.last_sync_version + 1, &full_checksum)
+            .map_err(|e| e.to_string())?;
+        
+        self.db.add_sync_log("success", &format!("Incremental sync: {} transactions, {} notes", transactions.len(), notes.len())).ok();
+        
+        Ok(format!("Incremental sync completed: {} transactions, {} notes", transactions.len(), notes.len()))
+    }
+    
+    async fn sync_single_note(&self, config: &SyncConfig, note: &Note) -> Result<(), String> {
+        let file_path = std::path::Path::new(&note.file_path);
+        if !file_path.exists() {
+            return Ok(());
+        }
+        
+        let content = tokio::fs::read_to_string(file_path).await
+            .map_err(|e| e.to_string())?;
+        
+        let url = format!("{}/notes/{}", config.server_url.trim_end_matches('/'), format!("{}.md", note.date));
+        
+        self.client
+            .put(&url)
+            .basic_auth(&config.username, Some(&config.password))
+            .header("Content-Type", "text/markdown")
+            .body(content)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to sync note: {}", e))?;
+        
+        Ok(())
     }
     
     async fn sync_notes(&self, config: &SyncConfig) -> Result<(), String> {
         let notes_dir = self.db.get_notes_dir();
         
-        // Read all note files
-        if let Ok(entries) = fs::read_dir(&notes_dir).await {
+        if let Ok(entries) = tokio::fs::read_dir(&notes_dir).await {
             let mut dir_entries = Vec::new();
             let mut stream = tokio_stream::wrappers::ReadDirStream::new(entries);
             while let Some(entry) = stream.next().await {
@@ -87,10 +170,9 @@ impl SyncService {
                 }
             }
             
-            // Upload each note file
             for note_name in dir_entries {
                 let note_path = notes_dir.join(&note_name);
-                if let Ok(content) = fs::read_to_string(&note_path).await {
+                if let Ok(content) = tokio::fs::read_to_string(&note_path).await {
                     let url = format!("{}/notes/{}", config.server_url.trim_end_matches('/'), note_name);
                     
                     let response = self.client
@@ -108,31 +190,12 @@ impl SyncService {
             }
         }
         
-        // Download remote notes
-        let notes_url = format!("{}/notes/", config.server_url.trim_end_matches('/'));
-        
-        // Try to list remote notes (PROPFIND)
-        if let Ok(response) = self.client
-            .request(reqwest::Method::from_bytes(b"PROPFIND").unwrap(), &notes_url)
-            .basic_auth(&config.username, Some(&config.password))
-            .header("Depth", "1")
-            .send()
-            .await
-        {
-            if response.status().is_success() {
-                // Parse WebDAV response to get file list
-                // For simplicity, we'll try to download known note files
-                // In production, you'd parse the XML response
-            }
-        }
-        
         Ok(())
     }
     
     pub fn test_connection(&self, config: &SyncConfig) -> Result<bool, String> {
         let url = config.server_url.trim_end_matches('/');
         
-        // Use blocking client for sync test
         let client = reqwest::blocking::Client::new();
         
         let response = client
