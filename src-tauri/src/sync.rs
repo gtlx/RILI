@@ -2,6 +2,7 @@ use crate::db::{AppError, Database, Note, SyncMetadata, Transaction};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tokio_stream::StreamExt;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SyncConfig {
@@ -160,8 +161,8 @@ impl SyncService {
         if let Ok(entries) = tokio::fs::read_dir(&notes_dir).await {
             let mut dir_entries = Vec::new();
             let mut stream = tokio_stream::wrappers::ReadDirStream::new(entries);
-            while let Some(entry) = stream.next().await {
-                if let Ok(entry) = entry {
+            while let Some(entry_result) = stream.next().await {
+                if let Ok(entry) = entry_result {
                     if let Some(name) = entry.file_name().to_str() {
                         if name.ends_with(".md") {
                             dir_entries.push(name.to_string());
