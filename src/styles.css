@@ -926,3 +926,63 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #D1D5DB;
 }
+
+/* Calendar Plugin Styles */
+.calendar-day-plugin {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plugin-badge {
+  font-size: 10px;
+  color: var(--text-secondary);
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: var(--bg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plugin-badge.lunar-month-start {
+  color: #DC2626;
+  font-weight: 500;
+}
+
+.plugin-badge.festival {
+  color: #DC2626;
+  font-weight: 500;
+  background: #FEE2E2;
+}
+
+.plugin-badge.holiday {
+  color: #059669;
+  font-weight: 500;
+  background: #D1FAE5;
+}
+
+.week-day-plugin {
+  margin-top: 4px;
+}
+
+.plugin-text {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.plugin-text.lunar-month-start {
+  color: #DC2626;
+  font-weight: 500;
+}
+
+.plugin-text.festival {
+  color: #DC2626;
+  font-weight: 500;
+}
+
+.plugin-text.holiday {
+  color: #059669;
+  font-weight: 500;
+}

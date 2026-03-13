@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../stores/appStore';
+import { pluginManager } from '../Calendar/plugins';
 
 export const Settings: React.FC = () => {
   const { 
@@ -23,6 +24,16 @@ export const Settings: React.FC = () => {
   
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const [importStatus, setImportStatus] = useState('');
+  
+  const [plugins, setPlugins] = useState(() => pluginManager.getAllPlugins());
+
+  const togglePlugin = (name: string) => {
+    const plugin = pluginManager.getPlugin(name);
+    if (plugin) {
+      pluginManager.setEnabled(name, !plugin.enabled);
+      setPlugins(pluginManager.getAllPlugins());
+    }
+  };
 
   useEffect(() => {
     loadLastSyncTime();
@@ -149,6 +160,33 @@ export const Settings: React.FC = () => {
 
   return (
     <div>
+      <div className="settings-section">
+        <div className="settings-section-header">日历插件</div>
+        <div className="settings-section-body">
+          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+            启用/禁用日历插件，可显示农历和节假日信息
+          </p>
+          {plugins.map(plugin => (
+            <div key={plugin.name} className="settings-item">
+              <div>
+                <div className="settings-item-label">
+                  {plugin.name === 'lunar' ? '农历显示' : '节假日显示'}
+                </div>
+                <div className="settings-item-desc">
+                  {plugin.name === 'lunar' 
+                    ? '显示公历对应的农历日期、节气、生肖' 
+                    : '显示中国传统节日和法定节假日'}
+                </div>
+              </div>
+              <div 
+                className={`toggle ${plugin.enabled ? 'active' : ''}`}
+                onClick={() => togglePlugin(plugin.name)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="settings-section">
         <div className="settings-section-header">WebDAV 同步设置</div>
         <div className="settings-section-body">
