@@ -20,11 +20,14 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     loadNote,
     saveNote,
     currentNoteContent,
-    deleteNote
+    deleteNote,
+    addCategory
   } = useAppStore();
   
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [transactionForm, setTransactionForm] = useState({
     amount: '',
     transaction_type: 'expense' as 'income' | 'expense',
@@ -59,6 +62,22 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     
     setTransactionForm({ amount: '', transaction_type: 'expense', category: '', note: '' });
     setShowTransactionForm(false);
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    
+    await addCategory({
+      name: newCategoryName.trim(),
+      category_type: transactionForm.transaction_type,
+      icon: 'tag',
+      color: '#6B7280',
+      is_default: false,
+    });
+    
+    setNewCategoryName('');
+    setShowAddCategory(false);
+    setTransactionForm({ ...transactionForm, category: newCategoryName.trim() });
   };
 
   const handleSaveNote = async () => {
@@ -98,6 +117,27 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
           <div className={`tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>记账</div>
           <div className={`tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>笔记</div>
         </div>
+        
+        {showAddCategory && (
+          <div style={{ padding: '16px', borderBottom: '1px solid var(--border)' }}>
+            <div className="form-group">
+              <label className="form-label">新增 {transactionForm.transaction_type === 'expense' ? '支出' : '收入'} 分类</label>
+              <input
+                type="text"
+                className="input"
+                style={{ width: '100%' }}
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                placeholder="输入分类名称，如：日常、房租、水费、电费等"
+                onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setShowAddCategory(false)}>取消</button>
+              <button className="btn btn-primary" onClick={handleAddCategory}>添加</button>
+            </div>
+          </div>
+        )}
         
         <div className="modal-body">
           {activeTab === 'all' && (
@@ -248,17 +288,28 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
                   </div>
                   <div className="form-group">
                     <label className="form-label">分类</label>
-                    <select
-                      className="select"
-                      style={{ width: '100%' }}
-                      value={transactionForm.category}
-                      onChange={e => setTransactionForm({ ...transactionForm, category: e.target.value })}
-                    >
-                      <option value="">选择分类</option>
-                      {(transactionForm.transaction_type === 'expense' ? categories.expense : categories.income).map(cat => (
-                        <option key={cat.name} value={cat.name}>{cat.name}</option>
-                      ))}
-                    </select>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <select
+                        className="select"
+                        style={{ flex: 1 }}
+                        value={transactionForm.category}
+                        onChange={e => setTransactionForm({ ...transactionForm, category: e.target.value })}
+                      >
+                        <option value="">选择分类</option>
+                        {(transactionForm.transaction_type === 'expense' ? categories.expense : categories.income).map(cat => (
+                          <option key={cat.name} value={cat.name}>{cat.name}</option>
+                        ))}
+                      </select>
+                      <button 
+                        className="btn btn-secondary" 
+                        onClick={() => setShowAddCategory(true)}
+                        title="添加自定义分类"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">备注</label>

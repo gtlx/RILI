@@ -78,6 +78,7 @@ interface AppState {
   
   categories: { income: Category[]; expense: Category[] };
   loadCategories: () => Promise<void>;
+  addCategory: (category: Category) => Promise<void>;
   
   notes: Note[];
   loadNotes: () => Promise<void>;
@@ -163,6 +164,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const income = await invoke<Category[]>('get_categories', { categoryType: 'income' });
     const expense = await invoke<Category[]>('get_categories', { categoryType: 'expense' });
     set({ categories: { income, expense } });
+  },
+  addCategory: async (category) => {
+    await invoke('add_category', { category });
+    await get().loadCategories();
   },
   
   notes: [],
