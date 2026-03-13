@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   format,
   startOfMonth,
@@ -15,6 +15,7 @@ import {
 } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAppStore } from '../../stores/appStore';
+import { pluginManager } from './plugins';
 
 interface CalendarProps {
   onDateClick: (date: Date) => void;
@@ -24,6 +25,8 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
   const [view, setView] = useState<'month' | 'week'>('month');
   const { selectedDate, transactions, notes, loadTransactions, loadNotes } = useAppStore();
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  const enabledPlugins = useMemo(() => pluginManager.getEnabledPlugins(), []);
 
   useEffect(() => {
     const start = startOfMonth(selectedDate);
@@ -107,6 +110,23 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                   {hasIncome && <span className="calendar-marker income" title="有收入" />}
                   {hasExpense && <span className="calendar-marker expense" title="有支出" />}
                 </div>
+                {enabledPlugins.length > 0 && isSameMonth(d, currentDate) && (
+                  <div className="calendar-day-plugin">
+                    {pluginManager.renderDay({
+                      date: d,
+                      isCurrentMonth: isSameMonth(d, currentDate),
+                      isToday
+                    }).map((result, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`plugin-badge ${result.className || ''}`}
+                        title={result.tooltip || ''}
+                      >
+                        {result.content || result.badge}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -154,6 +174,9 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
             const dateTransactions = getTransactionsForDate(d);
             const hasNote = hasNoteOnDate(d);
             const isToday = isSameDay(d, new Date());
+            const pluginResults = enabledPlugins.length > 0 
+              ? pluginManager.renderWeekCell({ date: d, isCurrentMonth: true, isToday })
+              : [];
 
             return (
               <div
@@ -164,6 +187,15 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                 <div className="week-day-header">
                   <div className="week-day-name">{format(d, 'EEE', { locale: zhCN })}</div>
                   <div className="week-day-date">{format(d, 'd')}</div>
+                  {pluginResults.length > 0 && (
+                    <div className="week-day-plugin">
+                      {pluginResults.map((result, idx) => (
+                        <div key={idx} className={`plugin-text ${result.className || ''}`}>
+                          {result.content}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="week-day-content">
                   {dateTransactions.slice(0, 3).map((t, j) => (
