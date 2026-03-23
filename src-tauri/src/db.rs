@@ -6,6 +6,22 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use thiserror::Error;
 
+fn get_data_dir() -> PathBuf {
+    #[cfg(target_os = "android")]
+    {
+        let path_str = "/data/data/com.root.rili_app/files/rili-app";
+        log::info!("Using Android data dir: {}", path_str);
+        PathBuf::from(path_str)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        dirs::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("rili-app")
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("Database error: {0}")]
@@ -138,17 +154,25 @@ pub struct Database {
 
 impl Database {
     pub fn new() -> Result<Self, AppError> {
-        let data_dir = dirs::data_local_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("rili-app");
+        let data_dir = get_data_dir();
 
-        std::fs::create_dir_all(&data_dir)?;
+        if let Err(e) = std::fs::create_dir_all(&data_dir) {
+            log::warn!(
+                "Failed to create data directory: {}, trying alternate path",
+                e
+            );
+        }
 
         let db_path = data_dir.join("rili.db");
         let notes_dir = data_dir.join("notes");
-        std::fs::create_dir_all(&notes_dir)?;
+        if let Err(e) = std::fs::create_dir_all(&notes_dir) {
+            log::warn!("Failed to create notes directory: {}", e);
+        }
 
-        let conn = Connection::open(&db_path)?;
+        let conn = Connection::open(&db_path).map_err(|e| {
+            log::error!("Failed to open database at {:?}: {}", db_path, e);
+            AppError::Database(e)
+        })?;
 
         let db = Database {
             conn: Mutex::new(conn),

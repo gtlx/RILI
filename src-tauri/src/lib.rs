@@ -3,6 +3,27 @@ use crate::sync::{SyncConfig, SyncService};
 use std::sync::Arc;
 use tauri::State;
 
+#[cfg(target_os = "android")]
+mod android_log {
+    use std::ffi::{CStr, CString};
+    use std::os::raw::c_char;
+
+    #[link(name = "log")]
+    extern "C" {
+        fn __android_log_write(prio: c_int, tag: *const c_char, msg: *const c_char) -> c_int;
+    }
+    
+    type c_int = i32;
+    
+    pub fn log(msg: &str) {
+        unsafe {
+            let tag = CString::new("RILI").unwrap();
+            let cmsg = CString::new(msg).unwrap();
+            __android_log_write(3, tag.as_ptr(), cmsg.as_ptr());
+        }
+    }
+}
+
 pub struct AppState {
     pub db: Arc<Database>,
 }
@@ -168,9 +189,9 @@ async fn sync_data_incremental(state: State<'_, AppState>, config: SyncConfig) -
 }
 
 #[tauri::command]
-fn test_sync_connection(config: SyncConfig) -> Result<bool, String> {
+async fn test_sync_connection(config: SyncConfig) -> Result<bool, String> {
     let sync_service = SyncService::new(Arc::new(Database::new().unwrap()));
-    sync_service.test_connection(&config)
+    sync_service.test_connection(&config).await
 }
 
 #[tauri::command]
@@ -180,9 +201,33 @@ fn get_last_sync_time(state: State<AppState>) -> Result<Option<String>, AppError
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    env_logger::init();
+    #[cfg(target_os = "android")]
+    android_log::log("RILI: run() called");
     
-    let db = Database::new().expect("Failed to initialize database");
+    let _ = env_logger::try_init();
+    log::info!("Starting RILI application");
+    
+    #[cfg(target_os = "android")]
+    android_log::log("RILI: initializing database...");
+    
+    let db = match Database::new() {
+        Ok(db) => {
+            log::info!("Database initialized successfully");
+            #[cfg(target_os = "android")]
+            android_log::log("RILI: database OK");
+            db
+        }
+        Err(e) => {
+            log::error!("Failed to initialize database: {}", e);
+            #[cfg(target_os = "android")]
+            android_log::log(&format!("RILI: database failed: {}", e));
+            panic!("Failed to initialize database: {}", e);
+        }
+    };
+    
+    #[cfg(target_os = "android")]
+    android_log::log("RILI: creating tauri builder...");
+    
     let app_state = AppState { db: Arc::new(db) };
     
     tauri::Builder::default()
