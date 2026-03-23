@@ -10,7 +10,6 @@ interface LunarInfo {
   lunarDayName: string;
   zodiac: string;
   solarTerm: string;
-  solarTerms: string[];
 }
 
 const LUNAR_MONTH_NAMES = ['', '正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'];
@@ -22,11 +21,13 @@ const ZODIAC_NAMES = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '�
 
 function getLunarInfo(date: Date): LunarInfo | null {
   try {
-    const lunar = lunarCalendar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate());
+    const lunar = lunarCalendar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate()) as any;
     
     if (!lunar) return null;
     
-    const lunarMonthName = lunar.isLeap ? '闰' + LUNAR_MONTH_NAMES[lunar.lunarMonth] : LUNAR_MONTH_NAMES[lunar.lunarMonth];
+    const monthNames = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'];
+    const monthIdx = lunar.lunarMonthName ? monthNames.indexOf(lunar.lunarMonthName) + 1 : lunar.lunarMonth;
+    const lunarMonthName = lunar.lunarLeapMonth > 0 ? '闰' + LUNAR_MONTH_NAMES[monthIdx] : LUNAR_MONTH_NAMES[monthIdx] || '';
     const lunarDayName = LUNAR_DAY_NAMES[lunar.lunarDay - 1] || '';
     const zodiac = ZODIAC_NAMES[(lunar.lunarYear - 4) % 12] || '';
     
@@ -34,12 +35,11 @@ function getLunarInfo(date: Date): LunarInfo | null {
       lunarDay: lunar.lunarDay,
       lunarMonth: lunar.lunarMonth,
       lunarYear: lunar.lunarYear,
-      isLeap: lunar.isLeap || false,
+      isLeap: lunar.lunarLeapMonth > 0,
       lunarMonthName,
       lunarDayName,
       zodiac,
-      solarTerm: lunar.solarTerm || '',
-      solarTerms: lunar.solarTerms || []
+      solarTerm: lunar.term || ''
     };
   } catch {
     return null;
@@ -77,7 +77,7 @@ export function createLunarPlugin(): CalendarPlugin {
       
       return {
         content: parts.slice(0, 2).join(' '),
-        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}`,
+        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}${lunar.solarTerm ? ', 节气:' + lunar.solarTerm : ''}`,
         className: isFestival ? 'festival' : lunar.lunarDay === 1 ? 'lunar-month-start' : ''
       };
     },
