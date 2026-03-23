@@ -359,3 +359,64 @@ zip = "2"
 | 同步能力 | ✅ | 增量同步+版本控制已实现 |
 
 **结论**: SQLite + 增量同步 + 数据校验方案完全满足需求
+
+## 8. Android 构建说明
+
+### 8.1 构建环境
+
+- **NDK**: 25.2.9519653
+- **Android SDK**: 33.0.1+
+- **Gradle**: 8.14+
+- **Rust**: 1.75+
+
+### 8.2 构建命令
+
+```bash
+cd src-tauri
+CI=true node ../node_modules/.bin/tauri android build
+```
+
+### 8.3 签名APK
+
+```bash
+# 签名 (需要先创建密钥库)
+$ANDROID_HOME/build-tools/33.0.1/apksigner sign \
+  --ks release.keystore \
+  --ks-pass pass:<密码> \
+  --key-pass pass:<密码> \
+  --v1-signing-enabled true \
+  --v2-signing-enabled true \
+  --v3-signing-enabled true \
+  --out rili-app.apk \
+  app-universal-release-unsigned.apk
+```
+
+### 8.4 数据库路径 (Android)
+
+在 Android 设备上，数据库文件位于：
+```
+/data/data/com.root.rili_app/files/rili-app/rili.db
+```
+
+应用会自动创建目录，无需手动创建。
+
+### 8.5 日志查看
+
+```bash
+# 查看应用日志
+adb logcat -s RILI:D *:W
+
+# 查看所有日志
+adb logcat | grep RILI
+```
+
+### 8.6 版本历史
+
+| 版本 | APK大小 | 说明 |
+|------|---------|------|
+| v0.2.0-v7 | ~51MB | 可正常使用的稳定版本 |
+
+### 8.7 已知问题
+
+- **代码压缩问题**: ProGuard/R8 压缩会导致 native 库崩溃，构建时请确保 `isMinifyEnabled = false`
+- **日志不显示**: 部分设备可能需要 root 权限才能查看 `logcat -s RILI`
