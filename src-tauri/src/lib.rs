@@ -5,16 +5,13 @@ use tauri::State;
 
 #[cfg(target_os = "android")]
 mod android_log {
-    use std::ffi::{CStr, CString};
+    use std::ffi::CString;
     use std::os::raw::c_char;
-
     #[link(name = "log")]
     extern "C" {
         fn __android_log_write(prio: c_int, tag: *const c_char, msg: *const c_char) -> c_int;
     }
-    
     type c_int = i32;
-    
     pub fn log(msg: &str) {
         unsafe {
             let tag = CString::new("RILI").unwrap();
@@ -24,6 +21,7 @@ mod android_log {
     }
 }
 
+#[allow(unused_variables)]
 pub struct AppState {
     pub db: Arc<Database>,
 }
@@ -202,31 +200,29 @@ fn get_last_sync_time(state: State<AppState>) -> Result<Option<String>, AppError
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "android")]
-    android_log::log("RILI: run() called");
+    {
+        android_log::log("=== RILI APP STARTING ===");
+        android_log::log(&format!("Rust version: {}", env!("CARGO_PKG_VERSION")));
+    }
     
-    let _ = env_logger::try_init();
-    log::info!("Starting RILI application");
-    
-    #[cfg(target_os = "android")]
-    android_log::log("RILI: initializing database...");
-    
-    let db = match Database::new() {
+    let db_result = Database::new();
+    let db = match db_result {
         Ok(db) => {
             log::info!("Database initialized successfully");
             #[cfg(target_os = "android")]
-            android_log::log("RILI: database OK");
+            android_log::log("Database OK");
             db
         }
         Err(e) => {
             log::error!("Failed to initialize database: {}", e);
             #[cfg(target_os = "android")]
-            android_log::log(&format!("RILI: database failed: {}", e));
+            android_log::log(&format!("Database FAILED: {}", e));
             panic!("Failed to initialize database: {}", e);
         }
     };
     
     #[cfg(target_os = "android")]
-    android_log::log("RILI: creating tauri builder...");
+    android_log::log("Creating Tauri builder...");
     
     let app_state = AppState { db: Arc::new(db) };
     

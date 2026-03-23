@@ -9,9 +9,17 @@ use thiserror::Error;
 fn get_data_dir() -> PathBuf {
     #[cfg(target_os = "android")]
     {
-        let path_str = "/data/data/com.root.rili_app/files/rili-app";
-        log::info!("Using Android data dir: {}", path_str);
-        PathBuf::from(path_str)
+        use std::fs;
+        let base_dir = PathBuf::from("/data/data/com.root.rili_app/files");
+        let _ = fs::create_dir_all(&base_dir);
+        let app_dir = base_dir.join("rili-app");
+        let _ = fs::create_dir_all(&app_dir);
+        log::info!("Android data dir: {:?}", app_dir);
+        log::info!("Directory exists: {}", app_dir.exists());
+        if let Ok(metadata) = fs::metadata(&app_dir) {
+            log::info!("Is writable: {:?}", metadata.permissions().readonly());
+        }
+        app_dir
     }
 
     #[cfg(not(target_os = "android"))]
