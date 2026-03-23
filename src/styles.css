@@ -332,6 +332,7 @@ body {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
 }
 
 .calendar-weekday {
@@ -341,6 +342,8 @@ body {
   color: var(--text-secondary);
   font-size: 12px;
   text-transform: uppercase;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
 .calendar-day {
@@ -351,6 +354,7 @@ body {
   padding: 8px;
   cursor: pointer;
   transition: background var(--transition);
+  background: var(--card-bg);
 }
 
 .calendar-day:hover {
@@ -358,7 +362,11 @@ body {
 }
 
 .calendar-day.other-month {
-  background: #F9FAFB;
+  background: #F3F4F6;
+  color: #9CA3AF;
+}
+
+.calendar-day.other-month .calendar-day-number {
   color: #9CA3AF;
 }
 

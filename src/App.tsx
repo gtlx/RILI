@@ -11,7 +11,7 @@ function App() {
   const { currentView, setCurrentView, setSelectedDate, loadTransactions, lastSyncTime } = useAppStore();
   const [showDateModal, setShowDateModal] = useState(false);
   const [modalDate, setModalDate] = useState<Date>(new Date());
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   const handleDateClick = (date: Date) => {
     setModalDate(date);
