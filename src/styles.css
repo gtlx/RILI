@@ -317,10 +317,17 @@ body {
   cursor: pointer;
   transition: background var(--transition);
   background: var(--card-bg);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
 
 .calendar-day:hover {
   background: var(--bg);
+}
+
+.calendar-day:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--primary);
 }
 
 .calendar-day.other-month {
@@ -1040,6 +1047,22 @@ body {
   color: #7C3AED;
   background: #EDE9FE;
   font-size: 10px;
+}
+
+.calendar-day.other-month .plugin-badge {
+  opacity: 0.6;
+}
+
+.calendar-day.other-month .plugin-badge.lunar-month-start,
+.calendar-day.other-month .plugin-badge.festival,
+.calendar-day.other-month .plugin-badge.holiday {
+  color: #9CA3AF;
+  background: transparent;
+}
+
+.calendar-day.other-month .plugin-badge.solar-term {
+  color: #9CA3AF;
+  background: transparent;
 }
 
 .week-day-plugin {

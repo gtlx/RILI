@@ -144,7 +144,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                   {hasIncome && <span className="calendar-marker income" title="有收入" />}
                   {hasExpense && <span className="calendar-marker expense" title="有支出" />}
                 </div>
-                {enabledPlugins.length > 0 && isSameMonth(d, currentDate) && (
+                {enabledPlugins.length > 0 && (
                   <div className="calendar-day-plugin">
                     {pluginManager.renderDay({
                       date: d,

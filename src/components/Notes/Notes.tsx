@@ -4,9 +4,11 @@ import { zhCN } from 'date-fns/locale';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAppStore } from '../../stores/appStore';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
 
 export const Notes: React.FC = () => {
-  const { notes, loadNotes, loadNote, currentNoteContent, saveNote, deleteNote } = useAppStore();
+  const { notes, loadNotes, loadNote, currentNoteContent, saveNote, deleteNote, exportNotesZip } = useAppStore();
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
@@ -39,6 +41,27 @@ export const Notes: React.FC = () => {
   const handleBack = () => {
     setSelectedNote(null);
     setIsEditing(false);
+  };
+
+  const handleExportNotes = async () => {
+    try {
+      const base64Data = await exportNotesZip();
+      const filePath = await save({
+        defaultPath: 'notes.zip',
+        filters: [{ name: 'ZIP', extensions: ['zip'] }]
+      });
+      if (filePath) {
+        const binaryData = atob(base64Data);
+        const bytes = new Uint8Array(binaryData.length);
+        for (let i = 0; i < binaryData.length; i++) {
+          bytes[i] = binaryData.charCodeAt(i);
+        }
+        await writeFile(filePath, bytes);
+        alert('笔记导出成功！');
+      }
+    } catch (e) {
+      alert('导出失败: ' + String(e));
+    }
   };
 
   if (selectedNote) {
@@ -100,6 +123,13 @@ export const Notes: React.FC = () => {
 
   return (
     <div className="notes-list">
+      {notes.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <button className="btn btn-secondary btn-sm" onClick={handleExportNotes}>
+            导出所有笔记
+          </button>
+        </div>
+      )}
       {notes.length === 0 ? (
         <div className="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="64" height="64">
