@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../stores/appStore';
 import { pluginManager } from '../Calendar/plugins';
+import { invoke } from '@tauri-apps/api/core';
 
 export const Settings: React.FC = () => {
   const { 
@@ -26,6 +27,9 @@ export const Settings: React.FC = () => {
   const [importStatus, setImportStatus] = useState('');
   
   const [plugins, setPlugins] = useState(() => pluginManager.getAllPlugins());
+  
+  const [initialBalance, setInitialBalance] = useState('0');
+  const [balanceStatus, setBalanceStatus] = useState('');
 
   const togglePlugin = (name: string) => {
     const plugin = pluginManager.getPlugin(name);
@@ -37,7 +41,27 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     loadLastSyncTime();
+    loadInitialBalance();
   }, [loadLastSyncTime]);
+
+  const loadInitialBalance = async () => {
+    try {
+      const balance = await invoke<string | null>('get_setting', { key: 'initial_balance' });
+      setInitialBalance(balance || '0');
+    } catch {
+      setInitialBalance('0');
+    }
+  };
+
+  const handleSaveInitialBalance = async () => {
+    try {
+      await invoke('set_setting', { key: 'initial_balance', value: initialBalance });
+      setBalanceStatus('初始余额已保存');
+      setTimeout(() => setBalanceStatus(''), 3000);
+    } catch (e) {
+      setBalanceStatus('保存失败: ' + String(e));
+    }
+  };
 
   const handleSaveSyncConfig = () => {
     setSyncConfig({
@@ -184,6 +208,47 @@ export const Settings: React.FC = () => {
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-header">账户设置</div>
+        <div className="settings-section-body">
+          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+            设置您的初始存款或负债，用于计算真实的净资产
+          </p>
+          <div className="form-group">
+            <label className="form-label">初始余额</label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="number"
+                className="input"
+                style={{ width: '200px' }}
+                value={initialBalance}
+                onChange={e => setInitialBalance(e.target.value)}
+                placeholder="0.00"
+                step="0.01"
+              />
+              <span style={{ color: '#6B7280' }}>元</span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              正数表示存款，负数表示负债
+            </p>
+          </div>
+          {balanceStatus && (
+            <div style={{ 
+              padding: '8px 12px', 
+              borderRadius: '6px', 
+              marginBottom: '16px',
+              background: balanceStatus.includes('失败') ? '#FEE2E2' : '#D1FAE5',
+              color: balanceStatus.includes('失败') ? '#EF4444' : '#10B981'
+            }}>
+              {balanceStatus}
+            </div>
+          )}
+          <button className="btn btn-primary" onClick={handleSaveInitialBalance}>
+            保存设置
+          </button>
         </div>
       </div>
 
@@ -356,7 +421,7 @@ export const Settings: React.FC = () => {
           <div className="settings-item">
             <div>
               <div className="settings-item-label">RILI 日历记账笔记</div>
-              <div className="settings-item-desc">版本 0.2.0</div>
+              <div className="settings-item-desc">版本 0.3.1</div>
             </div>
           </div>
           <div className="settings-item">

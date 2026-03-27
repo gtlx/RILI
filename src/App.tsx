@@ -8,7 +8,7 @@ import { useAppStore } from './stores/appStore';
 import './styles.css';
 
 function App() {
-  const { currentView, setCurrentView, setSelectedDate, loadTransactions, lastSyncTime } = useAppStore();
+  const { currentView, setCurrentView, setSelectedDate, loadTransactions } = useAppStore();
   const [showDateModal, setShowDateModal] = useState(false);
   const [modalDate, setModalDate] = useState<Date>(new Date());
 
