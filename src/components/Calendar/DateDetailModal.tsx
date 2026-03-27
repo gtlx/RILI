@@ -60,6 +60,7 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
         transaction_type: transactionType,
         category: category,
         note: note || undefined,
+        version: 1,
       });
       setAmount('');
       setCategory('');
