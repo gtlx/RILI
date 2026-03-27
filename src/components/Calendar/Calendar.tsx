@@ -19,9 +19,10 @@ import { pluginManager } from './plugins';
 
 interface CalendarProps {
   onDateClick: (date: Date) => void;
+  onMonthChange?: (date: Date) => void;
 }
 
-export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
+export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }) => {
   const [view, setView] = useState<'month' | 'week'>('month');
   const { selectedDate, transactions, notes, loadTransactions, loadNotes } = useAppStore();
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -118,7 +119,12 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
               <div
                 key={i}
                 className={`calendar-day ${!isSameMonth(d, currentDate) ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
-                onClick={() => onDateClick(d)}
+                onClick={() => {
+                  if (!isSameMonth(d, currentDate) && onMonthChange) {
+                    onMonthChange(d);
+                  }
+                  onDateClick(d);
+                }}
               >
                 <div className="calendar-day-number">{format(d, 'd')}</div>
                 <div className="calendar-day-markers">
