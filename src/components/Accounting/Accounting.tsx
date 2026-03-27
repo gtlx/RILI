@@ -15,9 +15,9 @@ interface YearMonthData {
 
 export const Accounting: React.FC = () => {
   const [view, setView] = useState<'week' | 'month' | 'year'>('month');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedWeek, setSelectedWeek] = useState(getWeek(new Date()));
+  const [selectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedWeek] = useState(getWeek(new Date()));
   const [yearData, setYearData] = useState<YearMonthData[]>([]);
   const [initialBalance, setInitialBalance] = useState(0);
   
@@ -90,46 +90,6 @@ export const Accounting: React.FC = () => {
   const yearTotalIncome = useMemo(() => yearData.reduce((sum, d) => sum + d.income, 0), [yearData]);
   const yearTotalExpense = useMemo(() => yearData.reduce((sum, d) => sum + d.expense, 0), [yearData]);
 
-  const handlePrev = () => {
-    if (view === 'year') {
-      setSelectedYear(selectedYear - 1);
-    } else if (view === 'month') {
-      if (selectedMonth === 1) {
-        setSelectedMonth(12);
-        setSelectedYear(selectedYear - 1);
-      } else {
-        setSelectedMonth(selectedMonth - 1);
-      }
-    } else {
-      if (selectedWeek === 1) {
-        setSelectedWeek(52);
-        setSelectedYear(selectedYear - 1);
-      } else {
-        setSelectedWeek(selectedWeek - 1);
-      }
-    }
-  };
-
-  const handleNext = () => {
-    if (view === 'year') {
-      setSelectedYear(selectedYear + 1);
-    } else if (view === 'month') {
-      if (selectedMonth === 12) {
-        setSelectedMonth(1);
-        setSelectedYear(selectedYear + 1);
-      } else {
-        setSelectedMonth(selectedMonth + 1);
-      }
-    } else {
-      if (selectedWeek === 52) {
-        setSelectedWeek(1);
-        setSelectedYear(selectedYear + 1);
-      } else {
-        setSelectedWeek(selectedWeek + 1);
-      }
-    }
-  };
-
   const getTitle = () => {
     if (view === 'year') return `${selectedYear}年分析`;
     if (view === 'month') return `${selectedYear}年${selectedMonth}月分析`;
@@ -196,20 +156,9 @@ export const Accounting: React.FC = () => {
     <div>
       <div className="calendar" style={{ marginBottom: '24px' }}>
         <div className="calendar-header">
-          <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={handlePrev}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-          </div>
+          <div style={{ width: '60px' }}></div>
           <div className="calendar-title">{getTitle()}</div>
           <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={handleNext}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
             <button className={`btn btn-sm ${view === 'year' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('year')}>
               年
             </button>
