@@ -21,10 +21,25 @@ function App() {
     setShowDateModal(true);
   };
 
+  const handleGoToToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    loadTransactions(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
+  };
+
+  const handleMonthChange = (date: Date) => {
+    setSelectedDate(date);
+    const start = new Date(date.getFullYear(), date.getMonth(), 1);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    loadTransactions(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'calendar':
-        return <Calendar onDateClick={handleDateClick} />;
+        return <Calendar onDateClick={handleDateClick} onMonthChange={handleMonthChange} />;
       case 'accounting':
         return <Accounting />;
       case 'notes':
@@ -32,7 +47,7 @@ function App() {
       case 'settings':
         return <Settings />;
       default:
-        return <Calendar onDateClick={handleDateClick} />;
+        return <Calendar onDateClick={handleDateClick} onMonthChange={handleMonthChange} />;
     }
   };
 
@@ -90,12 +105,14 @@ function App() {
             <h2 className="top-bar-title">{getViewTitle()}</h2>
           </div>
           <div className="top-bar-right">
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleDateClick(new Date())}
-            >
-              回到今天
-            </button>
+            {currentView === 'calendar' && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleGoToToday}
+              >
+                今天
+              </button>
+            )}
           </div>
         </header>
 

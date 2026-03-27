@@ -1,0 +1,8 @@
+[target.aarch64-linux-android]
+linker = "/home/gtlx/android-sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
+ar = "/home/gtlx/android-sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+
+[env]
+AR_aarch64_linux_android = "/home/gtlx/android-sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar"
+CC_aarch64-linux-android = "/home/gtlx/android-sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang"
+CXX_aarch64-linux-android = "/home/gtlx/android-sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang++"

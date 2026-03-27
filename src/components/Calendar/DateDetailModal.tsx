@@ -15,26 +15,22 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     notes, 
     categories,
     loadCategories,
-    addTransactionWithReload,
+    addTransaction,
     deleteTransaction,
     loadNote,
     saveNote,
     currentNoteContent,
     deleteNote,
-    addCategory,
     loadNotes
   } = useAppStore();
   
-  const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [showNoteEditor, setShowNoteEditor] = useState(false);
-  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
+  const [note, setNote] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [transactionForm, setTransactionForm] = useState({
-    amount: '',
-    transaction_type: 'expense' as 'income' | 'expense',
-    category: '',
-    note: '',
-  });
+  const [showNewCategory, setShowNewCategory] = useState(false);
 
   const dateStr = format(date, 'yyyy-MM-dd');
   const dayTransactions = transactions.filter(t => t.date === dateStr);
@@ -50,42 +46,44 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     }
   }, [dayNote, dateStr, loadNote]);
 
-  const handleAddTransaction = async () => {
-    const amount = parseFloat(transactionForm.amount);
-    if (!amount || isNaN(amount) || !transactionForm.category) {
+  const handleSaveTransaction = async () => {
+    const numAmount = parseFloat(amount);
+    if (!numAmount || numAmount <= 0 || !category) {
       alert('请输入有效的金额和分类');
       return;
     }
     
-    const start = new Date(date.getFullYear(), date.getMonth(), 1);
-    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    
-    await addTransactionWithReload({
-      date: dateStr,
-      amount: amount,
-      transaction_type: transactionForm.transaction_type,
-      category: transactionForm.category,
-      note: transactionForm.note || undefined,
-    }, start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
-    
-    setTransactionForm({ amount: '', transaction_type: 'expense', category: '', note: '' });
-    setShowTransactionForm(false);
+    try {
+      await addTransaction({
+        date: dateStr,
+        amount: numAmount,
+        transaction_type: transactionType,
+        category: category,
+        note: note || undefined,
+      });
+      setAmount('');
+      setCategory('');
+      setNote('');
+      setActiveTab('all');
+    } catch (e) {
+      alert('保存失败: ' + String(e));
+    }
   };
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) return;
     
-    await addCategory({
+    await useAppStore.getState().addCategory({
       name: newCategoryName.trim(),
-      category_type: transactionForm.transaction_type,
+      category_type: transactionType,
       icon: 'tag',
       color: '#6B7280',
       is_default: false,
     });
     
     setNewCategoryName('');
-    setShowAddCategory(false);
-    setTransactionForm({ ...transactionForm, category: newCategoryName.trim() });
+    setShowNewCategory(false);
+    setCategory(newCategoryName.trim());
   };
 
   const handleSaveNote = async () => {
@@ -102,6 +100,12 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     }
   };
 
+  const handleDeleteTransaction = async (id: number) => {
+    if (confirm('确定删除这条记录吗？')) {
+      await deleteTransaction(id);
+    }
+  };
+
   const totalIncome = dayTransactions
     .filter(t => t.transaction_type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -110,147 +114,11 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     .filter(t => t.transaction_type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const renderTransactionForm = () => (
-    <div className="card" style={{ marginBottom: '16px' }}>
-      <div className="card-header">
-        <div className="card-title">添加记账</div>
-        <button className="btn btn-sm btn-secondary" onClick={() => setShowTransactionForm(false)}>取消</button>
-      </div>
-      <div className="form-group">
-        <label className="form-label">类型</label>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            className={`btn ${transactionForm.transaction_type === 'expense' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setTransactionForm({ ...transactionForm, transaction_type: 'expense' })}
-            style={{ flex: 1 }}
-          >
-            支出
-          </button>
-          <button
-            className={`btn ${transactionForm.transaction_type === 'income' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setTransactionForm({ ...transactionForm, transaction_type: 'income' })}
-            style={{ flex: 1 }}
-          >
-            收入
-          </button>
-        </div>
-      </div>
-      <div className="form-group">
-        <label className="form-label">金额</label>
-        <input
-          type="number"
-          className="input"
-          style={{ width: '100%' }}
-          value={transactionForm.amount}
-          onChange={e => setTransactionForm({ ...transactionForm, amount: e.target.value })}
-          placeholder="0.00"
-        />
-      </div>
-      <div className="form-group">
-        <label className="form-label">分类</label>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <select
-            className="select"
-            style={{ flex: 1 }}
-            value={transactionForm.category}
-            onChange={e => setTransactionForm({ ...transactionForm, category: e.target.value })}
-          >
-            <option value="">选择分类</option>
-            {(transactionForm.transaction_type === 'expense' ? categories.expense : categories.income).map(cat => (
-              <option key={cat.name} value={cat.name}>{cat.name}</option>
-            ))}
-          </select>
-          <button 
-            className="btn btn-secondary" 
-            onClick={() => setShowAddCategory(true)}
-          >
-            +
-          </button>
-        </div>
-      </div>
-      <div className="form-group">
-        <label className="form-label">备注</label>
-        <input
-          type="text"
-          className="input"
-          style={{ width: '100%' }}
-          value={transactionForm.note}
-          onChange={e => setTransactionForm({ ...transactionForm, note: e.target.value })}
-          placeholder="可选备注"
-        />
-      </div>
-      <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleAddTransaction}>
-        保存
-      </button>
-    </div>
-  );
-
-  const renderAddCategoryForm = () => (
-    <div style={{ padding: '16px', borderBottom: '1px solid var(--border)', marginBottom: '16px' }}>
-      <div className="form-group">
-        <label className="form-label">新增 {transactionForm.transaction_type === 'expense' ? '支出' : '收入'} 分类</label>
-        <input
-          type="text"
-          className="input"
-          style={{ width: '100%' }}
-          value={newCategoryName}
-          onChange={e => setNewCategoryName(e.target.value)}
-          placeholder="输入分类名称"
-          onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
-        />
-      </div>
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-        <button className="btn btn-secondary" onClick={() => setShowAddCategory(false)}>取消</button>
-        <button className="btn btn-primary" onClick={handleAddCategory}>添加</button>
-      </div>
-    </div>
-  );
-
-  const renderTransactionList = (showDelete: boolean = false) => (
-    <div className="transaction-list">
-      {dayTransactions.length === 0 ? (
-        <div className="empty-state">
-          <p>暂无记账记录</p>
-        </div>
-      ) : (
-        dayTransactions.map((t, i) => (
-          <div key={i} className="transaction-item">
-            <div className={`transaction-icon ${t.transaction_type}`}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-                {t.transaction_type === 'income' ? (
-                  <path d="M12 19V5M5 12l7-7 7 7" />
-                ) : (
-                  <path d="M12 5v14M5 12l7 7 7-7" />
-                )}
-              </svg>
-            </div>
-            <div className="transaction-details">
-              <div className="transaction-category">{t.category}</div>
-              {t.note && <div className="transaction-note">{t.note}</div>}
-            </div>
-            <div className={`transaction-amount ${t.transaction_type}`}>
-              {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
-            </div>
-            {showDelete && (
-              <button 
-                className="btn btn-icon btn-sm" 
-                style={{ marginLeft: '8px' }}
-                onClick={() => deleteTransaction(t.id!)}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                  <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                </svg>
-              </button>
-            )}
-          </div>
-        ))
-      )}
-    </div>
-  );
+  const currentCategories = transactionType === 'expense' ? categories.expense : categories.income;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px' }}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
         <div className="modal-header">
           <div className="modal-title">{format(date, 'yyyy年M月d日', { locale: zhCN })}</div>
           <button className="btn btn-icon btn-secondary" onClick={onClose}>
@@ -269,55 +137,183 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
         <div className="modal-body">
           {activeTab === 'all' && (
             <div>
-              {showAddCategory && renderAddCategoryForm()}
-              {showTransactionForm ? renderTransactionForm() : (
-                <>
-                  <div className="stats-summary">
-                    <div className="stat-item">
-                      <div className="stat-icon income">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                          <path d="M12 19V5M5 12l7-7 7 7" />
-                        </svg>
-                      </div>
-                      <div className="stat-content">
-                        <div className="stat-label">收入</div>
-                        <div className="stat-value" style={{ color: '#10B981' }}>+{totalIncome.toFixed(2)}</div>
-                      </div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-icon expense">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                          <path d="M12 5v14M5 12l7 7 7-7" />
-                        </svg>
-                      </div>
-                      <div className="stat-content">
-                        <div className="stat-label">支出</div>
-                        <div className="stat-value" style={{ color: '#EF4444' }}>-{totalExpense.toFixed(2)}</div>
-                      </div>
-                    </div>
+              <div className="stats-summary">
+                <div className="stat-item">
+                  <div className="stat-icon income">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </svg>
                   </div>
-                  <div className="card">
-                    <div className="card-header">
-                      <div className="card-title">今日记账</div>
-                      <button className="btn btn-sm btn-primary" onClick={() => setShowTransactionForm(true)}>添加</button>
-                    </div>
-                    {renderTransactionList(false)}
+                  <div className="stat-content">
+                    <div className="stat-label">收入</div>
+                    <div className="stat-value" style={{ color: '#10B981' }}>+{totalIncome.toFixed(2)}</div>
                   </div>
-                </>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-icon expense">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
+                      <path d="M12 5v14M5 12l7 7 7-7" />
+                    </svg>
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-label">支出</div>
+                    <div className="stat-value" style={{ color: '#EF4444' }}>-{totalExpense.toFixed(2)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <button 
+                  className={`btn ${transactionType === 'expense' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => { setTransactionType('expense'); setCategory(''); }}
+                  style={{ flex: 1 }}
+                >
+                  支出
+                </button>
+                <button 
+                  className={`btn ${transactionType === 'income' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => { setTransactionType('income'); setCategory(''); }}
+                  style={{ flex: 1 }}
+                >
+                  收入
+                </button>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">金额</label>
+                <input
+                  type="number"
+                  className="input"
+                  style={{ width: '100%' }}
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">分类</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <select
+                    className="select"
+                    style={{ flex: 1 }}
+                    value={category}
+                    onChange={e => setCategory(e.target.value)}
+                  >
+                    <option value="">选择分类</option>
+                    {currentCategories.map(cat => (
+                      <option key={cat.name} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowNewCategory(true)}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {showNewCategory && (
+                <div className="form-group">
+                  <label className="form-label">新增分类</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ flex: 1 }}
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      placeholder="分类名称"
+                      onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+                    />
+                    <button className="btn btn-primary" onClick={handleAddCategory}>添加</button>
+                    <button className="btn btn-secondary" onClick={() => setShowNewCategory(false)}>取消</button>
+                  </div>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">备注 (可选)</label>
+                <input
+                  type="text"
+                  className="input"
+                  style={{ width: '100%' }}
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="备注"
+                />
+              </div>
+
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveTransaction}>
+                保存
+              </button>
+
+              {dayTransactions.length > 0 && (
+                <div style={{ marginTop: '24px' }}>
+                  <div className="card-title" style={{ marginBottom: '12px' }}>今日记录</div>
+                  {dayTransactions.map(t => (
+                    <div key={t.id} className="transaction-item" style={{ marginBottom: '8px' }}>
+                      <div className={`transaction-icon ${t.transaction_type}`}>
+                        <span style={{ fontSize: '12px' }}>{t.transaction_type === 'income' ? '↑' : '↓'}</span>
+                      </div>
+                      <div className="transaction-details">
+                        <div className="transaction-category">{t.category}</div>
+                        {t.note && <div className="transaction-note">{t.note}</div>}
+                      </div>
+                      <div className={`transaction-amount ${t.transaction_type}`}>
+                        {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
+                      </div>
+                      <button 
+                        className="btn btn-icon btn-sm" 
+                        style={{ marginLeft: '8px', color: '#EF4444' }}
+                        onClick={() => handleDeleteTransaction(t.id!)}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
           
           {activeTab === 'transactions' && (
             <div>
-              {showAddCategory && renderAddCategoryForm()}
-              {showTransactionForm ? renderTransactionForm() : (
-                <div className="card">
-                  <div className="card-header">
-                    <div className="card-title">记账记录</div>
-                    <button className="btn btn-sm btn-primary" onClick={() => setShowTransactionForm(true)}>添加</button>
-                  </div>
-                  {renderTransactionList(true)}
+              {dayTransactions.length === 0 ? (
+                <div className="empty-state">
+                  <p>暂无记账记录</p>
+                  <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => setActiveTab('all')}>
+                    添加记录
+                  </button>
+                </div>
+              ) : (
+                <div className="transaction-list">
+                  {dayTransactions.map(t => (
+                    <div key={t.id} className="transaction-item">
+                      <div className={`transaction-icon ${t.transaction_type}`}>
+                        <span style={{ fontSize: '12px' }}>{t.transaction_type === 'income' ? '↑' : '↓'}</span>
+                      </div>
+                      <div className="transaction-details">
+                        <div className="transaction-category">{t.category}</div>
+                        {t.note && <div className="transaction-note">{t.note}</div>}
+                      </div>
+                      <div className={`transaction-amount ${t.transaction_type}`}>
+                        {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
+                      </div>
+                      <button 
+                        className="btn btn-icon btn-sm" 
+                        style={{ marginLeft: '8px', color: '#EF4444' }}
+                        onClick={() => handleDeleteTransaction(t.id!)}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -351,7 +347,7 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
                       )}
                     </div>
                   </div>
-                  {dayNote ? (
+                  {currentNoteContent ? (
                     <div className="note-preview" style={{ whiteSpace: 'pre-wrap' }}>
                       {currentNoteContent}
                     </div>
