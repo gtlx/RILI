@@ -1345,7 +1345,7 @@ impl Database {
     }
 
     pub fn export_notes_zip(&self) -> Result<String, AppError> {
-        use std::fs::File;
+        use base64::Engine;
         use std::io::Write;
         use zip::write::SimpleFileOptions;
 
@@ -1359,13 +1359,15 @@ impl Database {
             for note in notes {
                 let content = self.get_note(&note.date)?.unwrap_or_default();
                 let filename = format!("{}.md", note.date);
-                zip.start_file(&filename, options)?;
+                zip.start_file(&filename, options)
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
                 zip.write_all(content.as_bytes())?;
             }
 
-            zip.finish()?;
+            zip.finish()
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         }
 
-        Ok(base64::encode(&buffer))
+        Ok(base64::engine::general_purpose::STANDARD.encode(&buffer))
     }
 }
