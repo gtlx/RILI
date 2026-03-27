@@ -24,9 +24,27 @@ interface CalendarProps {
 export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
   const [view, setView] = useState<'month' | 'week'>('month');
   const { selectedDate, transactions, notes, loadTransactions, loadNotes } = useAppStore();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date());
 
   const enabledPlugins = useMemo(() => pluginManager.getEnabledPlugins(), []);
+
+  const today = useMemo(() => new Date(), []);
+
+  const transactionIndex = useMemo(() => {
+    const idx = new Map<string, typeof transactions>();
+    transactions.forEach(t => {
+      const arr = idx.get(t.date) || [];
+      arr.push(t);
+      idx.set(t.date, arr);
+    });
+    return idx;
+  }, [transactions]);
+
+  const noteIndex = useMemo(() => {
+    const idx = new Set<string>();
+    notes.forEach(n => idx.add(n.date));
+    return idx;
+  }, [notes]);
 
   useEffect(() => {
     const start = startOfMonth(selectedDate);
@@ -36,14 +54,12 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
   }, [selectedDate, loadTransactions, loadNotes]);
 
   const getTransactionsForDate = useCallback((date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return transactions.filter(t => t.date === dateStr);
-  }, [transactions]);
+    return transactionIndex.get(format(date, 'yyyy-MM-dd')) || [];
+  }, [transactionIndex]);
 
   const hasNoteOnDate = useCallback((date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return notes.some(n => n.date === dateStr);
-  }, [notes]);
+    return noteIndex.has(format(date, 'yyyy-MM-dd'));
+  }, [noteIndex]);
 
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
@@ -96,7 +112,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
             const hasIncome = dateTransactions.some(t => t.transaction_type === 'income');
             const hasExpense = dateTransactions.some(t => t.transaction_type === 'expense');
             const hasNote = hasNoteOnDate(d);
-            const isToday = isSameDay(d, new Date());
+            const isToday = isSameDay(d, today);
 
             return (
               <div
@@ -173,7 +189,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
           {days.map((d, i) => {
             const dateTransactions = getTransactionsForDate(d);
             const hasNote = hasNoteOnDate(d);
-            const isToday = isSameDay(d, new Date());
+            const isToday = isSameDay(d, today);
             const pluginResults = enabledPlugins.length > 0 
               ? pluginManager.renderWeekCell({ date: d, isCurrentMonth: true, isToday })
               : [];

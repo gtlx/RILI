@@ -194,16 +194,15 @@ impl SyncService {
         Ok(())
     }
     
-    pub fn test_connection(&self, config: &SyncConfig) -> Result<bool, String> {
+    pub async fn test_connection(&self, config: &SyncConfig) -> Result<bool, String> {
         let url = config.server_url.trim_end_matches('/');
         
-        let client = reqwest::blocking::Client::new();
-        
-        let response = client
+        let response = self.client
             .request(reqwest::Method::from_bytes(b"PROPFIND").unwrap(), url)
             .basic_auth(&config.username, Some(&config.password))
             .header("Depth", "0")
             .send()
+            .await
             .map_err(|e| format!("Connection failed: {}", e))?;
         
         Ok(response.status().is_success() || response.status().as_u16() == 207)
