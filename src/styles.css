@@ -110,6 +110,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
+  margin-top: 16px;
 }
 
 .top-bar-left {
@@ -1055,19 +1056,29 @@ body {
 }
 
 .calendar-day.other-month .plugin-badge {
-  opacity: 0.6;
+  opacity: 1;
 }
 
-.calendar-day.other-month .plugin-badge.lunar-month-start,
-.calendar-day.other-month .plugin-badge.festival,
+.calendar-day.other-month .plugin-badge.lunar-month-start {
+  color: #DC2626;
+  font-weight: 500;
+}
+
+.calendar-day.other-month .plugin-badge.festival {
+  color: #DC2626;
+  font-weight: 500;
+  background: #FEE2E2;
+}
+
 .calendar-day.other-month .plugin-badge.holiday {
-  color: #9CA3AF;
-  background: transparent;
+  color: #059669;
+  font-weight: 500;
+  background: #D1FAE5;
 }
 
 .calendar-day.other-month .plugin-badge.solar-term {
-  color: #9CA3AF;
-  background: transparent;
+  color: #7C3AED;
+  background: #EDE9FE;
 }
 
 .week-day-plugin {
