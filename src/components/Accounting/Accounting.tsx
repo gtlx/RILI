@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { format, getWeek } from 'date-fns';
 import { useAppStore, MonthlyAnalysis, WeeklyAnalysis } from '../../stores/appStore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { invoke } from '@tauri-apps/api/core';
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6B7280', '#3B82F6', '#6366F1'];
 
@@ -19,27 +18,16 @@ export const Accounting: React.FC = () => {
   const [selectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedWeek] = useState(getWeek(new Date()));
   const [yearData, setYearData] = useState<YearMonthData[]>([]);
-  const [initialBalance, setInitialBalance] = useState(0);
   
   const { loadTransactions, loadCategories, weeklyAnalysis, monthlyAnalysis, loadWeeklyAnalysis, loadMonthlyAnalysis } = useAppStore();
 
   useEffect(() => {
     loadCategories();
-    loadInitialBalance();
     const date = new Date(selectedYear, selectedMonth - 1, 1);
     const start = new Date(date.getFullYear(), date.getMonth(), 1);
     const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
     loadTransactions(format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd'));
   }, [selectedYear, selectedMonth, loadTransactions, loadCategories]);
-
-  const loadInitialBalance = async () => {
-    try {
-      const balance = await invoke<string | null>('get_setting', { key: 'initial_balance' });
-      setInitialBalance(balance ? parseFloat(balance) : 0);
-    } catch {
-      setInitialBalance(0);
-    }
-  };
 
   useEffect(() => {
     if (view === 'week') {
@@ -251,14 +239,6 @@ export const Accounting: React.FC = () => {
       {view === 'month' && (
         <>
           <div className="analysis-cards">
-            {initialBalance !== 0 && (
-              <div className="analysis-card">
-                <div className="analysis-card-label">初始余额</div>
-                <div className={`analysis-card-value ${initialBalance >= 0 ? 'income' : 'expense'}`}>
-                  {initialBalance >= 0 ? '+' : ''}{initialBalance.toFixed(2)}
-                </div>
-              </div>
-            )}
             <div className="analysis-card">
               <div className="analysis-card-label">收入</div>
               <div className="analysis-card-value income">+{totalIncome.toFixed(2)}</div>
@@ -274,12 +254,6 @@ export const Accounting: React.FC = () => {
               </div>
               <div className={`analysis-card-change ${chartData.comparePercent >= 0 ? 'positive' : 'negative'}`}>
                 较上月 {chartData.comparePercent >= 0 ? '+' : ''}{chartData.comparePercent.toFixed(1)}%
-              </div>
-            </div>
-            <div className="analysis-card">
-              <div className="analysis-card-label">净资产</div>
-              <div className={`analysis-card-value ${initialBalance + totalIncome - totalExpense >= 0 ? 'income' : 'expense'}`}>
-                {(initialBalance + totalIncome - totalExpense).toFixed(2)}
               </div>
             </div>
           </div>
