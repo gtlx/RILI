@@ -1,8 +1,8 @@
 export interface CalendarPlugin {
   name: string;
   enabled: boolean;
-  renderDay?(context: PluginRenderContext): PluginRenderResult;
-  renderWeekCell?(context: PluginRenderContext): PluginRenderResult;
+  renderDay?(context: PluginRenderContext): PluginRenderResult | PluginRenderResult[];
+  renderWeekCell?(context: PluginRenderContext): PluginRenderResult | PluginRenderResult[];
 }
 
 export interface PluginRenderContext {

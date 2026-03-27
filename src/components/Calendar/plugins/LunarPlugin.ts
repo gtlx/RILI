@@ -51,35 +51,37 @@ export function createLunarPlugin(): CalendarPlugin {
     name: 'lunar',
     enabled: true,
     
-    renderDay(context: PluginRenderContext): PluginRenderResult {
+    renderDay(context: PluginRenderContext): PluginRenderResult[] {
       if (!context.isCurrentMonth) {
-        return {};
+        return [];
       }
       
       const lunar = getLunarInfo(context.date);
-      if (!lunar) return {};
+      if (!lunar) return [];
       
-      const parts: string[] = [];
+      const results: PluginRenderResult[] = [];
       
-      if (lunar.lunarDay === 1) {
-        parts.push(lunar.lunarMonthName);
-      } else {
-        parts.push(lunar.lunarDayName);
-      }
-      
-      if (lunar.solarTerm) {
-        parts.push(lunar.solarTerm);
-      }
+      const lunarContent = lunar.lunarDay === 1 ? lunar.lunarMonthName : lunar.lunarDayName;
       
       const isFestival = ['春节', '元宵节', '清明节', '端午节', '中秋节', '重阳节', '除夕'].some(f => 
         lunar.lunarDayName === f || lunar.lunarMonthName + lunar.lunarDayName === f
       );
       
-      return {
-        content: parts.slice(0, 2).join(' '),
-        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}${lunar.solarTerm ? ', 节气:' + lunar.solarTerm : ''}`,
-        className: isFestival ? 'festival' : lunar.lunarDay === 1 ? 'lunar-month-start' : ''
-      };
+      results.push({
+        content: lunarContent,
+        className: isFestival ? 'festival' : lunar.lunarDay === 1 ? 'lunar-month-start' : '',
+        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}`
+      });
+      
+      if (lunar.solarTerm) {
+        results.push({
+          content: lunar.solarTerm,
+          className: 'solar-term',
+          tooltip: `节气: ${lunar.solarTerm}`
+        });
+      }
+      
+      return results;
     },
     
     renderWeekCell(context: PluginRenderContext): PluginRenderResult {
