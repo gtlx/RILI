@@ -6,7 +6,6 @@ import {
   startOfWeek,
   endOfWeek,
   addDays,
-  addMonths,
   subMonths,
   isSameMonth,
   isSameDay,
@@ -71,6 +70,11 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
     onDateClick(date);
   };
 
+  const handleNavigation = (date: Date) => {
+    setCurrentDate(date);
+    setSelectedDate(date);
+  };
+
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
@@ -90,22 +94,9 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
       <div className="calendar">
         <div className="calendar-header">
           <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={() => {
-              const newDate = subMonths(currentDate, 1);
-              setCurrentDate(newDate);
-              setSelectedDate(newDate);
-            }}>
+            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(subMonths(currentDate, 1))}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-            <button className="btn btn-icon btn-secondary" onClick={() => {
-              const newDate = addMonths(currentDate, 1);
-              setCurrentDate(newDate);
-              setSelectedDate(newDate);
-            }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
           </div>
@@ -113,6 +104,11 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
             {format(currentDate, 'yyyy年M月', { locale: zhCN })}
           </div>
           <div className="calendar-nav">
+            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(endOfMonth(currentDate), 1))}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
             <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
               月
             </button>
@@ -131,24 +127,52 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
             const hasExpense = dateTransactions.some(t => t.transaction_type === 'expense');
             const hasNote = hasNoteOnDate(d);
             const isToday = isSameDay(d, today);
+            const isCurrentMonth = isSameMonth(d, currentDate);
 
             return (
               <div
                 key={i}
-                className={`calendar-day ${!isSameMonth(d, currentDate) ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
-                onClick={() => handleDateClick(d)}
+                className={`calendar-day ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
+                onClick={() => {
+                  if (!isCurrentMonth) {
+                    handleNavigation(d);
+                  } else {
+                    handleDateClick(d);
+                  }
+                }}
               >
                 <div className="calendar-day-number">{format(d, 'd')}</div>
-                <div className="calendar-day-markers">
-                  {hasNote && <span className="calendar-marker note" title="有笔记" />}
-                  {hasIncome && <span className="calendar-marker income" title="有收入" />}
-                  {hasExpense && <span className="calendar-marker expense" title="有支出" />}
-                </div>
-                {enabledPlugins.length > 0 && (
+                {isCurrentMonth && (
+                  <>
+                    <div className="calendar-day-markers">
+                      {hasNote && <span className="calendar-marker note" title="有笔记" />}
+                      {hasIncome && <span className="calendar-marker income" title="有收入" />}
+                      {hasExpense && <span className="calendar-marker expense" title="有支出" />}
+                    </div>
+                    {enabledPlugins.length > 0 && (
+                      <div className="calendar-day-plugin">
+                        {pluginManager.renderDay({
+                          date: d,
+                          isCurrentMonth,
+                          isToday
+                        }).map((result, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`plugin-badge ${result.className || ''}`}
+                            title={result.tooltip || ''}
+                          >
+                            {result.content || result.badge}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+                {!isCurrentMonth && enabledPlugins.length > 0 && (
                   <div className="calendar-day-plugin">
                     {pluginManager.renderDay({
                       date: d,
-                      isCurrentMonth: isSameMonth(d, currentDate),
+                      isCurrentMonth,
                       isToday
                     }).map((result, idx) => (
                       <div 
@@ -180,22 +204,9 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
       <div className="calendar">
         <div className="calendar-header">
           <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={() => {
-              const newDate = addDays(weekStart, -7);
-              setCurrentDate(newDate);
-              setSelectedDate(newDate);
-            }}>
+            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(weekStart, -7))}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
-            <button className="btn btn-icon btn-secondary" onClick={() => {
-              const newDate = addDays(weekStart, 7);
-              setCurrentDate(newDate);
-              setSelectedDate(newDate);
-            }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
           </div>
@@ -203,6 +214,11 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
             {format(weekStart, 'yyyy年M月d日', { locale: zhCN })} - {format(addDays(weekStart, 6), 'M月d日', { locale: zhCN })}
           </div>
           <div className="calendar-nav">
+            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(weekStart, 7))}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
             <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
               月
             </button>

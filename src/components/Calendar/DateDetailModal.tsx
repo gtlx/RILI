@@ -61,6 +61,7 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
         category: category,
         note: note || undefined,
         version: 1,
+        is_deleted: false,
       });
       setAmount('');
       setCategory('');

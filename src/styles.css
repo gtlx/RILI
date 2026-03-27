@@ -309,7 +309,7 @@ body {
 }
 
 .calendar-day {
-  min-height: 90px;
+  min-height: 100px;
   border: 1px solid var(--border);
   border-top: none;
   border-left: none;
@@ -341,7 +341,11 @@ body {
 
 .calendar-day.today {
   background: #EEF2FF;
-  border-color: var(--primary);
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  margin: -1px;
+  z-index: 1;
+  position: relative;
 }
 
 .calendar-day-number {
@@ -1024,6 +1028,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .plugin-badge.lunar-month-start {
