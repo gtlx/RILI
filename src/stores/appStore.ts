@@ -73,6 +73,7 @@ interface AppState {
   transactions: Transaction[];
   loadTransactions: (startDate: string, endDate: string) => Promise<void>;
   addTransaction: (transaction: Transaction) => Promise<void>;
+  addTransactionWithReload: (transaction: Transaction, startDate: string, endDate: string) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
   deleteTransaction: (id: number) => Promise<void>;
   
@@ -114,6 +115,9 @@ interface AppState {
   importData: (jsonData: string, merge: boolean) => Promise<void>;
   exportTransactionsCsv: (startDate: string, endDate: string) => Promise<string>;
   importTransactionsCsv: (csvData: string) => Promise<number>;
+  
+  getSetting: (key: string) => Promise<string | null>;
+  setSetting: (key: string, value: string) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -130,13 +134,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   addTransaction: async (transaction) => {
     await invoke('add_transaction', { transaction });
-    const { selectedDate } = get();
-    const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-    const end = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-    await get().loadTransactions(
-      start.toISOString().split('T')[0],
-      end.toISOString().split('T')[0]
-    );
+  },
+  addTransactionWithReload: async (transaction: Transaction, startDate: string, endDate: string) => {
+    await invoke('add_transaction', { transaction });
+    const transactions = await invoke<Transaction[]>('get_transactions', { startDate, endDate });
+    set({ transactions });
   },
   updateTransaction: async (transaction) => {
     await invoke('update_transaction', { transaction });
@@ -254,5 +256,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   importTransactionsCsv: async (csvData) => {
     return await invoke<number>('import_transactions_csv', { csvData });
+  },
+  
+  getSetting: async (key) => {
+    return await invoke<string | null>('get_setting', { key });
+  },
+  setSetting: async (key, value) => {
+    await invoke('set_setting', { key, value });
   },
 }));

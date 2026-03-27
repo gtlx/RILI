@@ -15,9 +15,8 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     notes, 
     categories,
     loadCategories,
-    addTransaction,
+    addTransactionWithReload,
     deleteTransaction,
-    loadTransactions,
     loadNote,
     saveNote,
     currentNoteContent,
@@ -58,17 +57,16 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
       return;
     }
     
-    await addTransaction({
+    const start = new Date(date.getFullYear(), date.getMonth(), 1);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    
+    await addTransactionWithReload({
       date: dateStr,
       amount: amount,
       transaction_type: transactionForm.transaction_type,
       category: transactionForm.category,
       note: transactionForm.note || undefined,
-    });
-    
-    const start = new Date(date.getFullYear(), date.getMonth(), 1);
-    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    await loadTransactions(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
+    }, start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
     
     setTransactionForm({ amount: '', transaction_type: 'expense', category: '', note: '' });
     setShowTransactionForm(false);
