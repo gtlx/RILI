@@ -47,8 +47,11 @@ class CalendarPluginManager implements PluginManager {
     for (const plugin of this.getEnabledPlugins()) {
       if (plugin.renderDay) {
         const result = plugin.renderDay(context);
-        if (result.content || result.badge || result.className) {
-          results.push(result);
+        const items = Array.isArray(result) ? result : [result];
+        for (const item of items) {
+          if (item.content || item.badge || item.className) {
+            results.push(item);
+          }
         }
       }
     }
@@ -62,8 +65,11 @@ class CalendarPluginManager implements PluginManager {
     for (const plugin of this.getEnabledPlugins()) {
       if (plugin.renderWeekCell) {
         const result = plugin.renderWeekCell(context);
-        if (result.content || result.className) {
-          results.push(result);
+        const items = Array.isArray(result) ? result : [result];
+        for (const item of items) {
+          if (item.content || item.className) {
+            results.push(item);
+          }
         }
       }
     }
