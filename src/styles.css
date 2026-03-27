@@ -1022,10 +1022,10 @@ body {
 
 .plugin-badge {
   font-size: 10px;
-  color: var(--text-secondary);
+  color: #4B5563;
   padding: 1px 4px;
   border-radius: 2px;
-  background: var(--bg);
+  background: #E5E7EB;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
