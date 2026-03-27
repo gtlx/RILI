@@ -421,7 +421,7 @@ export const Settings: React.FC = () => {
           <div className="settings-item">
             <div>
               <div className="settings-item-label">RILI 日历记账笔记</div>
-              <div className="settings-item-desc">版本 0.3.3</div>
+              <div className="settings-item-desc">版本 0.3.4</div>
             </div>
           </div>
           <div className="settings-item">

@@ -173,6 +173,11 @@ fn import_transactions_csv(state: State<AppState>, csv_data: String) -> Result<i
     state.db.import_transactions_csv(&csv_data)
 }
 
+#[tauri::command]
+fn export_notes_zip(state: State<AppState>) -> Result<String, AppError> {
+    state.db.export_notes_zip()
+}
+
 // Sync commands
 #[tauri::command]
 async fn sync_data(state: State<'_, AppState>, config: SyncConfig) -> Result<String, String> {
@@ -228,6 +233,8 @@ pub fn run() {
     
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             add_transaction,
@@ -254,6 +261,7 @@ pub fn run() {
             import_data,
             export_transactions_csv,
             import_transactions_csv,
+            export_notes_zip,
             sync_data,
             sync_data_incremental,
             test_sync_connection,

@@ -1343,4 +1343,29 @@ impl Database {
             Err(e) => Err(e.into()),
         }
     }
+
+    pub fn export_notes_zip(&self) -> Result<String, AppError> {
+        use std::fs::File;
+        use std::io::Write;
+        use zip::write::SimpleFileOptions;
+
+        let notes = self.get_all_notes()?;
+        let mut buffer = Vec::new();
+        {
+            let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
+            let options =
+                SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
+            for note in notes {
+                let content = self.get_note(&note.date)?.unwrap_or_default();
+                let filename = format!("{}.md", note.date);
+                zip.start_file(&filename, options)?;
+                zip.write_all(content.as_bytes())?;
+            }
+
+            zip.finish()?;
+        }
+
+        Ok(base64::encode(&buffer))
+    }
 }

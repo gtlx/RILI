@@ -115,6 +115,7 @@ interface AppState {
   importData: (jsonData: string, merge: boolean) => Promise<void>;
   exportTransactionsCsv: (startDate: string, endDate: string) => Promise<string>;
   importTransactionsCsv: (csvData: string) => Promise<number>;
+  exportNotesZip: () => Promise<string>;
   
   getSetting: (key: string) => Promise<string | null>;
   setSetting: (key: string, value: string) => Promise<void>;
@@ -256,6 +257,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   importTransactionsCsv: async (csvData) => {
     return await invoke<number>('import_transactions_csv', { csvData });
+  },
+  exportNotesZip: async () => {
+    return await invoke<string>('export_notes_zip');
   },
   
   getSetting: async (key) => {
