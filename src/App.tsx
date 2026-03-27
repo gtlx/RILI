@@ -29,17 +29,10 @@ function App() {
     loadTransactions(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
   };
 
-  const handleMonthChange = (date: Date) => {
-    setSelectedDate(date);
-    const start = new Date(date.getFullYear(), date.getMonth(), 1);
-    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    loadTransactions(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
-  };
-
   const renderContent = () => {
     switch (currentView) {
       case 'calendar':
-        return <Calendar onDateClick={handleDateClick} onMonthChange={handleMonthChange} />;
+        return <Calendar onDateClick={handleDateClick} />;
       case 'accounting':
         return <Accounting />;
       case 'notes':
@@ -47,7 +40,7 @@ function App() {
       case 'settings':
         return <Settings />;
       default:
-        return <Calendar onDateClick={handleDateClick} onMonthChange={handleMonthChange} />;
+        return <Calendar onDateClick={handleDateClick} />;
     }
   };
 

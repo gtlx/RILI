@@ -8,8 +8,6 @@ import {
   addDays,
   addMonths,
   subMonths,
-  addWeeks,
-  subWeeks,
   isSameMonth,
   isSameDay,
 } from 'date-fns';
@@ -19,13 +17,16 @@ import { pluginManager } from './plugins';
 
 interface CalendarProps {
   onDateClick: (date: Date) => void;
-  onMonthChange?: (date: Date) => void;
 }
 
-export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }) => {
+export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
   const [view, setView] = useState<'month' | 'week'>('month');
-  const { selectedDate, transactions, notes, loadTransactions, loadNotes } = useAppStore();
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const { selectedDate, transactions, notes, loadTransactions, loadNotes, setSelectedDate } = useAppStore();
+  const [currentDate, setCurrentDate] = useState(() => selectedDate);
+
+  useEffect(() => {
+    setCurrentDate(selectedDate);
+  }, [selectedDate]);
 
   const enabledPlugins = useMemo(() => pluginManager.getEnabledPlugins(), []);
 
@@ -62,6 +63,14 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }
     return noteIndex.has(format(date, 'yyyy-MM-dd'));
   }, [noteIndex]);
 
+  const handleDateClick = (date: Date) => {
+    if (!isSameMonth(date, currentDate)) {
+      setCurrentDate(date);
+      setSelectedDate(date);
+    }
+    onDateClick(date);
+  };
+
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
@@ -81,12 +90,20 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }
       <div className="calendar">
         <div className="calendar-header">
           <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={() => setCurrentDate(subMonths(currentDate, 1))}>
+            <button className="btn btn-icon btn-secondary" onClick={() => {
+              const newDate = subMonths(currentDate, 1);
+              setCurrentDate(newDate);
+              setSelectedDate(newDate);
+            }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <button className="btn btn-icon btn-secondary" onClick={() => setCurrentDate(addMonths(currentDate, 1))}>
+            <button className="btn btn-icon btn-secondary" onClick={() => {
+              const newDate = addMonths(currentDate, 1);
+              setCurrentDate(newDate);
+              setSelectedDate(newDate);
+            }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 18l6-6-6-6" />
               </svg>
@@ -119,12 +136,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }
               <div
                 key={i}
                 className={`calendar-day ${!isSameMonth(d, currentDate) ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
-                onClick={() => {
-                  if (!isSameMonth(d, currentDate) && onMonthChange) {
-                    onMonthChange(d);
-                  }
-                  onDateClick(d);
-                }}
+                onClick={() => handleDateClick(d)}
               >
                 <div className="calendar-day-number">{format(d, 'd')}</div>
                 <div className="calendar-day-markers">
@@ -168,12 +180,20 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }
       <div className="calendar">
         <div className="calendar-header">
           <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={() => setCurrentDate(subWeeks(currentDate, 1))}>
+            <button className="btn btn-icon btn-secondary" onClick={() => {
+              const newDate = addDays(weekStart, -7);
+              setCurrentDate(newDate);
+              setSelectedDate(newDate);
+            }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <button className="btn btn-icon btn-secondary" onClick={() => setCurrentDate(addWeeks(currentDate, 1))}>
+            <button className="btn btn-icon btn-secondary" onClick={() => {
+              const newDate = addDays(weekStart, 7);
+              setCurrentDate(newDate);
+              setSelectedDate(newDate);
+            }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 18l6-6-6-6" />
               </svg>
@@ -204,7 +224,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }
               <div
                 key={i}
                 className={`week-day ${isToday ? 'today' : ''}`}
-                onClick={() => onDateClick(d)}
+                onClick={() => handleDateClick(d)}
               >
                 <div className="week-day-header">
                   <div className="week-day-name">{format(d, 'EEE', { locale: zhCN })}</div>
@@ -249,3 +269,5 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick, onMonthChange }
 
   return view === 'month' ? renderMonthView() : renderWeekView();
 };
+
+export default Calendar;
