@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { format, getWeek } from 'date-fns';
 import { useAppStore, WeeklyAnalysis, MonthlyAnalysis } from '../../stores/appStore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -74,50 +74,49 @@ export const Accounting: React.FC = () => {
   };
 
   const isWeekly = view === 'week';
-  const analysis = isWeekly ? weeklyAnalysis : monthlyAnalysis;
 
-  if (!analysis) {
-    return <div className="loading"><div className="spinner"></div></div>;
-  }
+  const chartData = useMemo(() => {
+    let expensePieData: { name: string; value: number; color: string }[] = [];
+    let incomePieData: { name: string; value: number; color: string }[] = [];
+    let dailyExpenseData: { date: string; amount: number }[] = [];
+    let comparePercent = 0;
+    let topCategories: { category: string; amount: number }[] = [];
 
-  let expensePieData: { name: string; value: number; color: string }[] = [];
-  let incomePieData: { name: string; value: number; color: string }[] = [];
-  let dailyExpenseData: { date: string; amount: number }[] = [];
-  let comparePercent = 0;
-  let topCategories: { category: string; amount: number }[] = [];
+    if (isWeekly && weeklyAnalysis) {
+      const wa = weeklyAnalysis as WeeklyAnalysis;
+      expensePieData = wa.expense_by_category.map((item, index) => ({
+        name: item.category,
+        value: item.amount,
+        color: COLORS[index % COLORS.length]
+      }));
+      incomePieData = wa.income_by_category.map((item, index) => ({
+        name: item.category,
+        value: item.amount,
+        color: COLORS[index % COLORS.length]
+      }));
+      dailyExpenseData = wa.daily_expense.map(item => ({
+        date: format(new Date(item.date), 'M/d'),
+        amount: item.amount
+      }));
+      comparePercent = wa.compare_to_last_week;
+    } else if (!isWeekly && monthlyAnalysis) {
+      const ma = monthlyAnalysis as MonthlyAnalysis;
+      expensePieData = ma.expense_by_category.map((item, index) => ({
+        name: item.category,
+        value: item.amount,
+        color: COLORS[index % COLORS.length]
+      }));
+      incomePieData = ma.income_by_category.map((item, index) => ({
+        name: item.category,
+        value: item.amount,
+        color: COLORS[index % COLORS.length]
+      }));
+      comparePercent = ma.compare_to_last_month;
+      topCategories = ma.top_categories || [];
+    }
 
-  if (isWeekly && weeklyAnalysis) {
-    const wa = weeklyAnalysis as WeeklyAnalysis;
-    expensePieData = wa.expense_by_category.map((item, index) => ({
-      name: item.category,
-      value: item.amount,
-      color: COLORS[index % COLORS.length]
-    }));
-    incomePieData = wa.income_by_category.map((item, index) => ({
-      name: item.category,
-      value: item.amount,
-      color: COLORS[index % COLORS.length]
-    }));
-    dailyExpenseData = wa.daily_expense.map(item => ({
-      date: format(new Date(item.date), 'M/d'),
-      amount: item.amount
-    }));
-    comparePercent = wa.compare_to_last_week;
-  } else if (!isWeekly && monthlyAnalysis) {
-    const ma = monthlyAnalysis as MonthlyAnalysis;
-    expensePieData = ma.expense_by_category.map((item, index) => ({
-      name: item.category,
-      value: item.amount,
-      color: COLORS[index % COLORS.length]
-    }));
-    incomePieData = ma.income_by_category.map((item, index) => ({
-      name: item.category,
-      value: item.amount,
-      color: COLORS[index % COLORS.length]
-    }));
-    comparePercent = ma.compare_to_last_month;
-    topCategories = ma.top_categories || [];
-  }
+    return { expensePieData, incomePieData, dailyExpenseData, comparePercent, topCategories };
+  }, [isWeekly, weeklyAnalysis, monthlyAnalysis]);
 
   const totalIncome = isWeekly 
     ? (weeklyAnalysis as WeeklyAnalysis)?.total_income || 0 
@@ -125,6 +124,10 @@ export const Accounting: React.FC = () => {
   const totalExpense = isWeekly 
     ? (weeklyAnalysis as WeeklyAnalysis)?.total_expense || 0 
     : (monthlyAnalysis as MonthlyAnalysis)?.total_expense || 0;
+
+  if (!weeklyAnalysis && !monthlyAnalysis) {
+    return <div className="loading"><div className="spinner"></div></div>;
+  }
 
   return (
     <div>
@@ -168,20 +171,20 @@ export const Accounting: React.FC = () => {
           <div className={`analysis-card-value ${totalIncome - totalExpense >= 0 ? 'income' : 'expense'}`}>
             {(totalIncome - totalExpense).toFixed(2)}
           </div>
-          <div className={`analysis-card-change ${comparePercent >= 0 ? 'positive' : 'negative'}`}>
+          <div className={`analysis-card-change ${chartData.comparePercent >= 0 ? 'positive' : 'negative'}`}>
             {view === 'week' 
-              ? `较上周 ${comparePercent >= 0 ? '+' : ''}${comparePercent.toFixed(1)}%`
-              : `较上月 ${comparePercent >= 0 ? '+' : ''}${comparePercent.toFixed(1)}%`
+              ? `较上周 ${chartData.comparePercent >= 0 ? '+' : ''}${chartData.comparePercent.toFixed(1)}%`
+              : `较上月 ${chartData.comparePercent >= 0 ? '+' : ''}${chartData.comparePercent.toFixed(1)}%`
             }
           </div>
         </div>
       </div>
 
-      {view === 'week' && dailyExpenseData.length > 0 && (
+      {view === 'week' && chartData.dailyExpenseData.length > 0 && (
         <div className="chart-container">
           <div className="chart-title">每日支出趋势</div>
           <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={dailyExpenseData}>
+            <LineChart data={chartData.dailyExpenseData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis dataKey="date" stroke="#6B7280" fontSize={12} />
               <YAxis stroke="#6B7280" fontSize={12} />
@@ -198,21 +201,21 @@ export const Accounting: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
         <div className="chart-container">
           <div className="chart-title">支出分类</div>
-          {expensePieData.length > 0 ? (
+          {chartData.expensePieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
-                  data={expensePieData}
+                  data={chartData.expensePieData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
                   outerRadius={80}
                   paddingAngle={2}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
-                  {expensePieData.map((entry, index) => (
+                  {chartData.expensePieData.map((entry: { color: string }, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -226,21 +229,21 @@ export const Accounting: React.FC = () => {
 
         <div className="chart-container">
           <div className="chart-title">收入分类</div>
-          {incomePieData.length > 0 ? (
+          {chartData.incomePieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
-                  data={incomePieData}
+                  data={chartData.incomePieData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
                   outerRadius={80}
                   paddingAngle={2}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
-                  {incomePieData.map((entry, index) => (
+                  {chartData.incomePieData.map((entry: { color: string }, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -253,11 +256,11 @@ export const Accounting: React.FC = () => {
         </div>
       </div>
 
-      {view === 'month' && topCategories.length > 0 && (
+      {view === 'month' && chartData.topCategories.length > 0 && (
         <div className="chart-container">
           <div className="chart-title">Top 5 支出分类</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {topCategories.map((cat, index) => {
+            {chartData.topCategories.map((cat: { category: string; amount: number }, index: number) => {
               const percentage = (cat.amount / totalExpense) * 100;
               return (
                 <div key={cat.category}>

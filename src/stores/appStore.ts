@@ -161,8 +161,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   categories: { income: [], expense: [] },
   loadCategories: async () => {
-    const income = await invoke<Category[]>('get_categories', { categoryType: 'income' });
-    const expense = await invoke<Category[]>('get_categories', { categoryType: 'expense' });
+    const [income, expense] = await Promise.all([
+      invoke<Category[]>('get_categories', { categoryType: 'income' }),
+      invoke<Category[]>('get_categories', { categoryType: 'expense' })
+    ]);
     set({ categories: { income, expense } });
   },
   addCategory: async (category) => {

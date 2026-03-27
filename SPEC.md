@@ -414,6 +414,7 @@ adb logcat | grep RILI
 
 | 版本 | APK大小 | 说明 |
 |------|---------|------|
+| v0.2.2 | ~51MB | 代码性能优化：交易/笔记索引Map，Promise并行加载，图表数据useMemo |
 | v0.2.1 | ~51MB | 修复24节气显示，侧边栏默认折叠，优化日历背景 |
 | v0.2.0-v7 | ~51MB | 可正常使用的稳定版本 |
 
@@ -421,3 +422,13 @@ adb logcat | grep RILI
 
 - **代码压缩问题**: ProGuard/R8 压缩会导致 native 库崩溃，构建时请确保 `isMinifyEnabled = false`
 - **日志不显示**: 部分设备可能需要 root 权限才能查看 `logcat -s RILI`
+
+### 8.8 性能优化
+
+#### 前端优化
+- 日历组件使用 Map/Set 索引替代数组遍历查找
+- 图表数据转换使用 useMemo 缓存
+- 分类数据并行加载 (Promise.all)
+
+#### 后端优化
+- N+1 查询改用批量操作
