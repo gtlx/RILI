@@ -1,4 +1,4 @@
-package com.root.rili_app
+package com.root.rili
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
