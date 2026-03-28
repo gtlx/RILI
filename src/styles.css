@@ -310,7 +310,7 @@ body {
 }
 
 .calendar-day {
-  min-height: 100px;
+  min-height: 110px;
   border: 1px solid var(--border);
   border-top: none;
   border-left: none;
@@ -555,29 +555,32 @@ body {
 /* Analysis */
 .analysis-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
   margin-bottom: 24px;
+  overflow-x: auto;
 }
 
 .analysis-card {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 16px;
+  min-width: 0;
 }
 
 .analysis-card-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
   text-transform: uppercase;
   margin-bottom: 8px;
 }
 
 .analysis-card-value {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   font-family: var(--font-mono);
+  word-break: break-all;
 }
 
 .analysis-card-value.expense {
@@ -1025,7 +1028,8 @@ body {
   color: #4B5563;
   padding: 1px 4px;
   border-radius: 2px;
-  background: #E5E7EB;
+  background: #F3F4F6;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1035,6 +1039,7 @@ body {
 .plugin-badge.lunar-month-start {
   color: #DC2626;
   font-weight: 500;
+  background: #F3F4F6;
 }
 
 .plugin-badge.festival {
@@ -1062,6 +1067,7 @@ body {
 .calendar-day.other-month .plugin-badge.lunar-month-start {
   color: #DC2626;
   font-weight: 500;
+  background: #F3F4F6;
 }
 
 .calendar-day.other-month .plugin-badge.festival {

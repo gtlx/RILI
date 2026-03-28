@@ -59,18 +59,13 @@ export const Accounting: React.FC = () => {
     const months: YearMonthData[] = [];
     for (let m = 1; m <= 12; m++) {
       try {
-        await loadMonthlyAnalysis(selectedYear, m);
-        const ma = monthlyAnalysis;
-        if (ma) {
-          months.push({
-            month: m,
-            income: ma.total_income,
-            expense: ma.total_expense,
-            balance: ma.total_income - ma.total_expense
-          });
-        } else {
-          months.push({ month: m, income: 0, expense: 0, balance: 0 });
-        }
+        const analysis = await invoke<MonthlyAnalysis>('get_monthly_analysis', { year: selectedYear, month: m });
+        months.push({
+          month: m,
+          income: analysis.total_income,
+          expense: analysis.total_expense,
+          balance: analysis.total_income - analysis.total_expense
+        });
       } catch {
         months.push({ month: m, income: 0, expense: 0, balance: 0 });
       }
@@ -280,14 +275,14 @@ export const Accounting: React.FC = () => {
             <div className="chart-container">
               <div className="chart-title">支出分类</div>
               {chartData.expensePieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie
                       data={chartData.expensePieData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={40}
+                      outerRadius={60}
                       paddingAngle={2}
                       dataKey="value"
                       label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -308,14 +303,14 @@ export const Accounting: React.FC = () => {
             <div className="chart-container">
               <div className="chart-title">收入分类</div>
               {chartData.incomePieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie
                       data={chartData.incomePieData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={40}
+                      outerRadius={60}
                       paddingAngle={2}
                       dataKey="value"
                       label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
