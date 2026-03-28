@@ -49,7 +49,7 @@ export function createHolidayPlugin(): CalendarPlugin {
       
       if (holiday) {
         return {
-          badge: '假',
+          content: holiday,
           tooltip: holiday,
           className: 'holiday'
         };
@@ -58,7 +58,7 @@ export function createHolidayPlugin(): CalendarPlugin {
       const festival = getFestivalDate(context.date.getMonth() + 1, context.date.getDate());
       if (festival) {
         return {
-          badge: '节',
+          content: festival,
           tooltip: festival,
           className: 'festival'
         };
