@@ -63,9 +63,15 @@ export interface SyncMetadata {
   checksum: string;
 }
 
+export type Theme = 'light' | 'dark' | 'system';
+
 interface AppState {
   currentView: 'calendar' | 'accounting' | 'notes' | 'settings';
   setCurrentView: (view: AppState['currentView']) => void;
+  
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  loadTheme: () => Promise<void>;
   
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
@@ -121,9 +127,32 @@ interface AppState {
   setSetting: (key: string, value: string) => Promise<void>;
 }
 
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  if (theme === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  } else {
+    root.setAttribute('data-theme', theme);
+  }
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   currentView: 'calendar',
   setCurrentView: (view) => set({ currentView: view }),
+  
+  theme: 'system',
+  setTheme: async (theme) => {
+    await invoke('set_setting', { key: 'theme', value: theme });
+    set({ theme });
+    applyTheme(theme);
+  },
+  loadTheme: async () => {
+    const savedTheme = await invoke<string | null>('get_setting', { key: 'theme' });
+    const theme = (savedTheme as Theme) || 'system';
+    set({ theme });
+    applyTheme(theme);
+  },
   
   selectedDate: new Date(),
   setSelectedDate: (date) => set({ selectedDate: date }),

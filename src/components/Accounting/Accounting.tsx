@@ -151,8 +151,6 @@ export const Accounting: React.FC = () => {
     <div>
       <div className="calendar" style={{ marginBottom: '24px' }}>
         <div className="calendar-header">
-          <div style={{ width: '60px' }}></div>
-          <div className="calendar-title">{getTitle()}</div>
           <div className="calendar-nav">
             <button className={`btn btn-sm ${view === 'year' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('year')}>
               年
@@ -164,6 +162,8 @@ export const Accounting: React.FC = () => {
               周
             </button>
           </div>
+          <div className="calendar-title">{getTitle()}</div>
+          <div style={{ width: '60px' }}></div>
         </div>
       </div>
 

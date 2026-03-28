@@ -99,28 +99,29 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-          </div>
-          <div className="calendar-title">
-            {format(currentDate, 'yyyy年M月', { locale: zhCN })}
-          </div>
-          <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(endOfMonth(currentDate), 1))}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
             <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
               月
             </button>
             <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>
               周
             </button>
+            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(endOfMonth(currentDate), 1))}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
           </div>
+          <div className="calendar-title">
+            {format(currentDate, 'yyyy年M月', { locale: zhCN })}
+          </div>
+          <div style={{ width: '60px' }}></div>
         </div>
         <div className="calendar-grid">
-          {weekdays.map(w => (
-            <div key={w} className="calendar-weekday">{w}</div>
-          ))}
+          <div className="calendar-weekday-row">
+            {weekdays.map(w => (
+              <div key={w} className="calendar-weekday">{w}</div>
+            ))}
+          </div>
           {days.map((d, i) => {
             const dateTransactions = getTransactionsForDate(d);
             const hasIncome = dateTransactions.some(t => t.transaction_type === 'income');
@@ -209,23 +210,22 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-          </div>
-          <div className="calendar-title">
-            {format(weekStart, 'yyyy年M月d日', { locale: zhCN })} - {format(addDays(weekStart, 6), 'M月d日', { locale: zhCN })}
-          </div>
-          <div className="calendar-nav">
-            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(weekStart, 7))}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
             <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
               月
             </button>
             <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>
               周
             </button>
+            <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(weekStart, 7))}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
           </div>
+          <div className="calendar-title">
+            {format(weekStart, 'yyyy年M月d日', { locale: zhCN })} - {format(addDays(weekStart, 6), 'M月d日', { locale: zhCN })}
+          </div>
+          <div style={{ width: '60px' }}></div>
         </div>
         <div className="week-view">
           {days.map((d, i) => {

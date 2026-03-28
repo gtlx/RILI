@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar } from './components/Calendar/Calendar';
 import { DateDetailModal } from './components/Calendar/DateDetailModal';
 import { Accounting } from './components/Accounting/Accounting';
@@ -8,9 +8,13 @@ import { useAppStore } from './stores/appStore';
 import './styles.css';
 
 function App() {
-  const { currentView, setCurrentView, setSelectedDate, loadTransactions } = useAppStore();
+  const { currentView, setCurrentView, setSelectedDate, loadTransactions, loadTheme } = useAppStore();
   const [showDateModal, setShowDateModal] = useState(false);
   const [modalDate, setModalDate] = useState<Date>(new Date());
+
+  useEffect(() => {
+    loadTheme();
+  }, [loadTheme]);
 
   const handleDateClick = (date: Date) => {
     setModalDate(date);
