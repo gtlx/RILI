@@ -401,7 +401,7 @@ impl Database {
         compute_checksum(&data)
     }
 
-    // Transaction methods
+    // 交易方法
     pub fn add_transaction(&self, t: Transaction) -> Result<i64, AppError> {
         let conn = self.conn.lock().unwrap();
         let now = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -617,7 +617,7 @@ impl Database {
         Ok(transactions)
     }
 
-    // Category methods
+    // 分类方法
     pub fn get_categories(&self, category_type: &str) -> Result<Vec<Category>, AppError> {
         let conn = self.conn.lock().unwrap();
 
@@ -655,7 +655,7 @@ impl Database {
         Ok(conn.last_insert_rowid())
     }
 
-    // Note methods
+    // 记账备注方法
     pub fn save_note(&self, date: &str, content: &str) -> Result<(), AppError> {
         let file_path = self.get_notes_dir().join(format!("{}.md", date));
         std::fs::write(&file_path, content)?;
@@ -787,7 +787,7 @@ impl Database {
         Ok(())
     }
 
-    // Analysis methods
+    // 分析方法
     pub fn get_weekly_analysis(&self, year: i32, week: u32) -> Result<WeeklyAnalysis, AppError> {
         let conn = self.conn.lock().unwrap();
 
@@ -978,7 +978,7 @@ impl Database {
         })
     }
 
-    // Settings methods
+    // 设置方法
     pub fn get_setting(&self, key: &str) -> Result<Option<String>, AppError> {
         let conn = self.conn.lock().unwrap();
 
@@ -1006,7 +1006,7 @@ impl Database {
         Ok(())
     }
 
-    // Sync metadata methods
+    // 同步元数据方法
     pub fn get_sync_metadata(&self) -> Result<SyncMetadata, AppError> {
         let conn = self.conn.lock().unwrap();
 
@@ -1104,7 +1104,7 @@ impl Database {
         Ok(())
     }
 
-    // Data validation
+    // 数据验证
     pub fn validate_data_integrity(&self) -> Result<bool, AppError> {
         let conn = self.conn.lock().unwrap();
 
@@ -1185,7 +1185,7 @@ impl Database {
         Ok(format!("{:x}", hasher.finalize()))
     }
 
-    // Export methods
+    // 导出方法
     pub fn export_all_data(&self) -> Result<String, AppError> {
         let transactions = self.get_all_transactions()?;
 
@@ -1316,7 +1316,7 @@ impl Database {
         Ok(count)
     }
 
-    // Sync log
+    // 同步日志
     pub fn add_sync_log(&self, status: &str, details: &str) -> Result<(), AppError> {
         let conn = self.conn.lock().unwrap();
 

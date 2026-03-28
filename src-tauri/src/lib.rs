@@ -29,7 +29,7 @@ pub struct AppState {
 mod db;
 mod sync;
 
-// Transaction commands
+// 交易命令
 #[tauri::command]
 fn add_transaction(state: State<AppState>, transaction: Transaction) -> Result<i64, AppError> {
     state.db.add_transaction(transaction)
@@ -64,7 +64,7 @@ fn get_transactions_since_version(state: State<AppState>, version: i64) -> Resul
     state.db.get_transactions_since_version(version)
 }
 
-// Category commands
+// 分类命令
 #[tauri::command]
 fn get_categories(state: State<AppState>, category_type: String) -> Result<Vec<Category>, AppError> {
     state.db.get_categories(&category_type)
@@ -75,7 +75,7 @@ fn add_category(state: State<AppState>, category: Category) -> Result<i64, AppEr
     state.db.add_category(category)
 }
 
-// Note commands
+// 记账备注命令
 #[tauri::command]
 fn save_note(state: State<AppState>, date: String, content: String) -> Result<(), AppError> {
     state.db.save_note(&date, &content)
@@ -101,7 +101,7 @@ fn delete_note(state: State<AppState>, date: String) -> Result<(), AppError> {
     state.db.delete_note(&date)
 }
 
-// Analysis commands
+// 分析命令
 #[tauri::command]
 fn get_weekly_analysis(
     state: State<AppState>,
@@ -120,7 +120,7 @@ fn get_monthly_analysis(
     state.db.get_monthly_analysis(year, month)
 }
 
-// Settings commands
+// 设置命令
 #[tauri::command]
 fn get_setting(state: State<AppState>, key: String) -> Result<Option<String>, AppError> {
     state.db.get_setting(&key)
@@ -131,13 +131,13 @@ fn set_setting(state: State<AppState>, key: String, value: String) -> Result<(),
     state.db.set_setting(&key, &value)
 }
 
-// Sync metadata commands
+// 同步元数据命令
 #[tauri::command]
 fn get_sync_metadata(state: State<AppState>) -> Result<SyncMetadata, AppError> {
     state.db.get_sync_metadata()
 }
 
-// Data validation commands
+// 数据验证命令
 #[tauri::command]
 fn validate_data_integrity(state: State<AppState>) -> Result<bool, AppError> {
     state.db.validate_data_integrity()
@@ -148,7 +148,7 @@ fn compute_full_checksum(state: State<AppState>) -> Result<String, AppError> {
     state.db.compute_full_checksum()
 }
 
-// Export/Import commands
+// 导入/导出命令
 #[tauri::command]
 fn export_all_data(state: State<AppState>) -> Result<String, AppError> {
     state.db.export_all_data()
@@ -178,7 +178,7 @@ fn export_notes_zip(state: State<AppState>) -> Result<String, AppError> {
     state.db.export_notes_zip()
 }
 
-// Sync commands
+// 同步命令
 #[tauri::command]
 async fn sync_data(state: State<'_, AppState>, config: SyncConfig) -> Result<String, String> {
     let sync_service = SyncService::new(state.db.clone());

@@ -21,7 +21,7 @@ open class BuildTask : DefaultTask() {
             runTauriCli(executable)
         } catch (e: Exception) {
             if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-                // Try different Windows-specific extensions
+                // 尝试不同的 Windows 特定扩展名
                 val fallbacks = listOf(
                     "$executable.exe",
                     "$executable.cmd",
