@@ -321,7 +321,13 @@ body {
 .calendar-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+}
+
+.calendar-nav-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .calendar-title {
@@ -334,27 +340,43 @@ body {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: auto repeat(6, minmax(100px, 1fr));
+  grid-template-rows: auto repeat(6, minmax(90px, 1fr));
+}
+
+.calendar-day {
+  min-height: 90px;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-left: none;
+  padding: 4px;
+  cursor: pointer;
+  transition: background var(--transition);
+  background: var(--card-bg);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .calendar-weekday-row {
   grid-column: 1 / -1;
   display: flex;
   justify-content: space-around;
-  padding: 8px;
-  background: var(--bg);
+  padding: 4px;
+  background: var(--card-bg);
   border-radius: 8px;
   margin-bottom: 4px;
   border: 1px solid var(--border);
 }
 
 .calendar-weekday {
-  padding: 4px 12px;
+  padding: 2px 0;
   text-align: center;
   font-weight: 500;
   color: var(--text-secondary);
   font-size: 12px;
-  background: var(--bg);
+  width: 14.28%;
   border: 1px solid var(--border);
   border-radius: 4px;
 }
@@ -403,9 +425,10 @@ body {
 
 .calendar-day-number {
   font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   text-align: center;
-  width: 100%;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .calendar-day.today .calendar-day-number {
@@ -1077,7 +1100,7 @@ body {
   margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .plugin-badge {

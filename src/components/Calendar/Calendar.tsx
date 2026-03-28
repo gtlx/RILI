@@ -99,12 +99,14 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
-              月
-            </button>
-            <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>
-              周
-            </button>
+            <div className="calendar-nav-center">
+              <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
+                月
+              </button>
+              <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>
+                周
+              </button>
+            </div>
             <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(endOfMonth(currentDate), 1))}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 18l6-6-6-6" />
@@ -210,12 +212,14 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
-              月
-            </button>
-            <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>
-              周
-            </button>
+            <div className="calendar-nav-center">
+              <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
+                月
+              </button>
+              <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>
+                周
+              </button>
+            </div>
             <button className="btn btn-icon btn-secondary" onClick={() => handleNavigation(addDays(weekStart, 7))}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 18l6-6-6-6" />
