@@ -15,6 +15,8 @@ export const Settings: React.FC = () => {
     importSystemJson,
     exportAccountingCsv,
     importAccountingCsv,
+    exportNotesZip,
+    importNotesZip,
     theme,
     setTheme
   } = useAppStore();
@@ -135,8 +137,10 @@ export const Settings: React.FC = () => {
 
   const handleExportCsv = async () => {
     try {
-      const startDate = prompt('开始日期 (YYYY-MM-DD)', new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
-      const endDate = prompt('结束日期 (YYYY-MM-DD)', new Date().toISOString().split('T')[0]);
+      const startEl = document.getElementById('csvStart') as HTMLInputElement;
+      const endEl = document.getElementById('csvEnd') as HTMLInputElement;
+      const startDate = startEl?.value;
+      const endDate = endEl?.value;
       if (!startDate || !endDate) return;
       
       const data = await exportAccountingCsv(startDate, endDate);
@@ -377,95 +381,144 @@ export const Settings: React.FC = () => {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-header">数据导出</div>
+        <div className="settings-section-header">数据管理</div>
         <div className="settings-section-body">
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-            <button className="btn btn-primary" onClick={handleExportJson}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-              </svg>
-              导出 JSON (完整备份)
-            </button>
-            <button className="btn btn-secondary" onClick={handleExportCsv}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-              </svg>
-              导出 CSV (记账数据)
-            </button>
-          </div>
-        </div>
-      </div>
+          {/* ── 系统数据卡片 ── */}
+          <div style={{
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px', padding: '16px', marginBottom: '12px',
+            background: 'var(--bg-primary)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '18px' }}>📦</span>
+              <span style={{ fontWeight: 600, fontSize: '14px' }}>系统数据</span>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+              JSON 格式 · 完整备份，可用于数据迁移
+            </p>
 
-      <div className="settings-section">
-        <div className="settings-section-header">数据导入</div>
-        <div className="settings-section-body">
-          <div className="form-group">
-            <label className="form-label">导入模式</label>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="importMode"
-                  checked={importMode === 'merge'}
-                  onChange={() => setImportMode('merge')}
-                />
-                合并 (保留现有数据)
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', display: 'block' }}>导入模式</label>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                  <input type="radio" name="importMode" checked={importMode === 'merge'} onChange={() => setImportMode('merge')} />
+                  合并
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                  <input type="radio" name="importMode" checked={importMode === 'replace'} onChange={() => setImportMode('replace')} />
+                  替换
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '13px' }}>
+                📥 导入 JSON
+                <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportJson} />
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input
-                  type="radio"
-                  name="importMode"
-                  checked={importMode === 'replace'}
-                  onChange={() => setImportMode('replace')}
-                />
-                替换 (清空现有数据)
-              </label>
+              <button className="btn btn-secondary" onClick={handleExportJson} style={{ fontSize: '13px' }}>
+                📤 导出 JSON
+              </button>
             </div>
           </div>
-          
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-              </svg>
-              导入 JSON
-              <input
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                onChange={handleImportJson}
-              />
-            </label>
-            <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-              </svg>
-              导入 CSV
-              <input
-                type="file"
-                accept=".csv"
-                style={{ display: 'none' }}
-                onChange={handleImportCsv}
-              />
-            </label>
+
+          {/* ── 记账数据卡片 ── */}
+          <div style={{
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px', padding: '16px', marginBottom: '12px',
+            background: 'var(--bg-primary)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '18px' }}>💰</span>
+              <span style={{ fontWeight: 600, fontSize: '14px' }}>记账数据</span>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+              CSV 格式 · 可导入 Excel 或其他软件分析
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>日期范围</label>
+              <input type="date" id="csvStart" defaultValue={new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]}
+                style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>~</span>
+              <input type="date" id="csvEnd" defaultValue={new Date().toISOString().split('T')[0]}
+                style={{ fontSize: '13px', padding: '4px 8px', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '13px' }}>
+                📥 导入 CSV
+                <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportCsv} />
+              </label>
+              <button className="btn btn-secondary" onClick={handleExportCsv} style={{ fontSize: '13px' }}>
+                📤 导出 CSV
+              </button>
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+              格式: 日期,类型(income/expense),金额,分类,备注<br />
+              示例: 2026-06-29,expense,25.50,餐饮,午餐
+            </p>
           </div>
-          
+
+          {/* ── 笔记数据卡片 ── */}
+          <div style={{
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px', padding: '16px',
+            background: 'var(--bg-primary)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '18px' }}>📝</span>
+              <span style={{ fontWeight: 600, fontSize: '14px' }}>笔记数据</span>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+              ZIP 格式 · 打包为 .md 文件
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '13px' }}>
+                📥 导入 ZIP
+                <input type="file" accept=".zip" style={{ display: 'none' }} onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const buf = await file.arrayBuffer();
+                    const bytes = new Uint8Array(buf);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+                    const base64 = btoa(binary);
+                      const count = await importNotesZip(base64);
+                    setImportStatus(`成功导入 ${count} 篇笔记`);
+                    setTimeout(() => setImportStatus(''), 3000);
+                  } catch (err) {
+                    setImportStatus('导入失败: ' + String(err));
+                  }
+                  e.target.value = '';
+                }} />
+              </label>
+              <button className="btn btn-secondary" onClick={async () => {
+                try {
+                  const base64 = await exportNotesZip();
+                  await backend.saveFileDialog(base64, `rili-notes-${new Date().toISOString().split('T')[0]}.zip`, 'application/zip');
+                } catch (e) {
+                  alert('导出失败: ' + String(e));
+                }
+              }} style={{ fontSize: '13px' }}>
+                📤 导出 ZIP
+              </button>
+            </div>
+          </div>
+
+          {/* ── 统一状态提示 ── */}
           {importStatus && (
-            <div style={{ 
-              padding: '8px 12px', 
-              borderRadius: '6px', 
-              marginTop: '16px',
+            <div style={{
+              padding: '8px 12px', borderRadius: '6px', marginTop: '12px',
               background: importStatus.includes('失败') ? '#FEE2E2' : '#D1FAE5',
-              color: importStatus.includes('失败') ? '#EF4444' : '#10B981'
+              color: importStatus.includes('失败') ? '#EF4444' : '#10B981',
+              fontSize: '13px'
             }}>
               {importStatus}
             </div>
           )}
-          
-          <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '16px' }}>
-            CSV 格式要求：日期,类型,金额,分类,备注<br/>
-            示例：2024-01-15,expense,25.50,餐饮,午餐
-          </p>
         </div>
       </div>
 

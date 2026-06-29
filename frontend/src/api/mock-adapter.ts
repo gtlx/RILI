@@ -70,8 +70,7 @@ export class MockBackend implements BackendAdapter {
   async computeFullChecksum(): Promise<string> { return ''; }
 
   // ── 记账: CSV ──
-  async exportAccountingCsv(s: string, e: string): Promise<string> { return '日期,类型,金额,分类,备注
-'; }
+  async exportAccountingCsv(s: string, e: string): Promise<string> { return 'date,type,amount,category,note'; }
   async importAccountingCsv(c: string): Promise<number> { return 0; }
 
   // ── 笔记: ZIP ──

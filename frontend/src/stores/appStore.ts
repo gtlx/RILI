@@ -54,6 +54,7 @@ interface AppState {
   exportAccountingCsv: (startDate: string, endDate: string) => Promise<string>;
   importAccountingCsv: (csvData: string) => Promise<number>;
   exportNotesZip: () => Promise<string>;
+  importNotesZip: (base64Data: string) => Promise<number>;
   getSetting: (key: string) => Promise<string | null>;
   setSetting: (key: string, value: string) => Promise<void>;
 }
@@ -185,6 +186,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   exportAccountingCsv: async (s, e) => backend.exportAccountingCsv(s, e),
   importAccountingCsv: async (c) => backend.importAccountingCsv(c),
   exportNotesZip: async () => backend.exportNotesZip(),
+  importNotesZip: async (b) => backend.importNotesZip(b),
 
   getSetting: async (key) => backend.getSetting(key),
   setSetting: async (key, value) => backend.setSetting(key, value),
