@@ -1,0 +1,11 @@
+{
+  "name": "rili-workspace",
+  "private": true,
+  "scripts": {
+    "tauri": "cd rili-tauri && cargo tauri",
+    "tauri:dev": "cd rili-tauri && cargo tauri dev",
+    "cli": "cargo run -p rili-cli --",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build"
+  }
+}

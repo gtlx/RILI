@@ -1,0 +1,22 @@
+[package]
+name = "rili-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RILI core library - calendar, accounting, notes"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+thiserror = "2"
+log = "0.4"
+reqwest = { version = "0.12", features = ["json", "blocking"] }
+base64 = "0.22"
+zip = "2"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3"
