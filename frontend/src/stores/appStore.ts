@@ -50,9 +50,9 @@ interface AppState {
   validateDataIntegrity: () => Promise<boolean>;
   computeFullChecksum: () => Promise<string>;
   exportData: () => Promise<string>;
-  importData: (jsonData: string, merge: boolean) => Promise<void>;
-  exportTransactionsCsv: (startDate: string, endDate: string) => Promise<string>;
-  importTransactionsCsv: (csvData: string) => Promise<number>;
+  importSystemJson: (jsonData: string, merge: boolean) => Promise<void>;
+  exportAccountingCsv: (startDate: string, endDate: string) => Promise<string>;
+  importAccountingCsv: (csvData: string) => Promise<number>;
   exportNotesZip: () => Promise<string>;
   getSetting: (key: string) => Promise<string | null>;
   setSetting: (key: string, value: string) => Promise<void>;
@@ -180,10 +180,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   validateDataIntegrity: async () => backend.validateDataIntegrity(),
   computeFullChecksum: async () => backend.computeFullChecksum(),
-  exportData: async () => backend.exportAllData(),
-  importData: async (jsonData, merge) => backend.importData(jsonData, merge),
-  exportTransactionsCsv: async (s, e) => backend.exportTransactionsCsv(s, e),
-  importTransactionsCsv: async (c) => backend.importTransactionsCsv(c),
+  exportData: async () => backend.exportSystemJson(),
+  importSystemJson: async (jsonData, merge) => backend.importSystemJson(jsonData, merge),
+  exportAccountingCsv: async (s, e) => backend.exportAccountingCsv(s, e),
+  importAccountingCsv: async (c) => backend.importAccountingCsv(c),
   exportNotesZip: async () => backend.exportNotesZip(),
 
   getSetting: async (key) => backend.getSetting(key),

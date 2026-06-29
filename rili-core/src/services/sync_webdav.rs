@@ -18,7 +18,7 @@ impl SyncService {
 
     pub fn sync(&self, config: &SyncConfig) -> Result<String, Error> {
         // 全量同步
-        let data = self.db.export_all_data()?;
+        let data = self.db.export_system_json()?;
         let url = format!("{}/rili-data.json", config.server_url.trim_end_matches('/'));
         let resp = self
             .client
@@ -39,7 +39,7 @@ impl SyncService {
             .send()
         {
             if let Ok(text) = resp.text() {
-                let _ = self.db.import_data(&text, true);
+                let _ = self.db.import_system_json(&text, true);
             }
         }
         let checksum = self.db.compute_full_checksum()?;

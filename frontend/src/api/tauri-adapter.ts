@@ -39,13 +39,19 @@ export class TauriBackend implements BackendAdapter {
   async getLastSyncTime(): Promise<string | null> { return invoke('get_last_sync_time'); }
   async getSyncMetadata(): Promise<SyncMetadata> { return invoke('get_sync_metadata'); }
 
-  async exportAllData(): Promise<string> { return invoke('export_all_data'); }
-  async importData(j: string, m: boolean): Promise<void> { return invoke('import_data', { jsonData: j, merge: m }); }
-  async exportTransactionsCsv(s: string, e: string): Promise<string> { return invoke('export_transactions_csv', { startDate: s, endDate: e }); }
-  async importTransactionsCsv(c: string): Promise<number> { return invoke('import_transactions_csv', { csvData: c }); }
-  async exportNotesZip(): Promise<string> { return invoke('export_notes_zip'); }
+  // ── 系统数据: JSON ──
+  async exportSystemJson(): Promise<string> { return invoke('export_system_json'); }
+  async importSystemJson(j: string, m: boolean): Promise<void> { return invoke('import_system_json', { jsonData: j, merge: m }); }
   async validateDataIntegrity(): Promise<boolean> { return invoke('validate_data_integrity'); }
   async computeFullChecksum(): Promise<string> { return invoke('compute_full_checksum'); }
+
+  // ── 记账: CSV ──
+  async exportAccountingCsv(s: string, e: string): Promise<string> { return invoke('export_accounting_csv', { startDate: s, endDate: e }); }
+  async importAccountingCsv(c: string): Promise<number> { return invoke('import_accounting_csv', { csvData: c }); }
+
+  // ── 笔记: ZIP ──
+  async exportNotesZip(): Promise<string> { return invoke('export_notes_zip'); }
+  async importNotesZip(b: string): Promise<number> { return invoke('import_notes_zip', { base64Data: b }); }
 
   async saveFileDialog(content: string, filename: string, _mimeType: string): Promise<void> {
     const { save } = await import('@tauri-apps/plugin-dialog');

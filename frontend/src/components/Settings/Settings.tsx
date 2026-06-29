@@ -12,9 +12,9 @@ export const Settings: React.FC = () => {
     lastSyncTime, 
     loadLastSyncTime,
     exportData,
-    importData,
-    exportTransactionsCsv,
-    importTransactionsCsv,
+    importSystemJson,
+    exportAccountingCsv,
+    importAccountingCsv,
     theme,
     setTheme
   } = useAppStore();
@@ -139,7 +139,7 @@ export const Settings: React.FC = () => {
       const endDate = prompt('结束日期 (YYYY-MM-DD)', new Date().toISOString().split('T')[0]);
       if (!startDate || !endDate) return;
       
-      const data = await exportTransactionsCsv(startDate, endDate);
+      const data = await exportAccountingCsv(startDate, endDate);
       const blob = new Blob([data], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -158,7 +158,7 @@ export const Settings: React.FC = () => {
     
     try {
       const text = await file.text();
-      await importData(text, importMode === 'merge');
+      await importSystemJson(text, importMode === 'merge');
       setImportStatus(`导入成功！${importMode === 'merge' ? '(合并模式)' : '(替换模式)'}`);
       setTimeout(() => setImportStatus(''), 3000);
     } catch (err) {
@@ -174,7 +174,7 @@ export const Settings: React.FC = () => {
     
     try {
       const text = await file.text();
-      const count = await importTransactionsCsv(text);
+      const count = await importAccountingCsv(text);
       setImportStatus(`成功导入 ${count} 条记录`);
       setTimeout(() => setImportStatus(''), 3000);
     } catch (err) {

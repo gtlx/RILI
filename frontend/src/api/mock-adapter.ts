@@ -63,13 +63,20 @@ export class MockBackend implements BackendAdapter {
   async testSyncConnection(c: SyncConfig): Promise<boolean> { return false; }
   async getLastSyncTime(): Promise<string | null> { return null; }
   async getSyncMetadata(): Promise<SyncMetadata> { return { last_sync_version: 0, last_sync_time: '', checksum: '' }; }
-  async exportAllData(): Promise<string> { return '{}'; }
-  async importData(j: string, m: boolean): Promise<void> {}
-  async exportTransactionsCsv(s: string, e: string): Promise<string> { return ''; }
-  async importTransactionsCsv(c: string): Promise<number> { return 0; }
-  async exportNotesZip(): Promise<string> { return ''; }
+  // ── 系统数据: JSON ──
+  async exportSystemJson(): Promise<string> { return JSON.stringify({ transactions: this.txns, categories: this.categories }); }
+  async importSystemJson(j: string, m: boolean): Promise<void> {}
   async validateDataIntegrity(): Promise<boolean> { return true; }
   async computeFullChecksum(): Promise<string> { return ''; }
+
+  // ── 记账: CSV ──
+  async exportAccountingCsv(s: string, e: string): Promise<string> { return '日期,类型,金额,分类,备注
+'; }
+  async importAccountingCsv(c: string): Promise<number> { return 0; }
+
+  // ── 笔记: ZIP ──
+  async exportNotesZip(): Promise<string> { return ''; }
+  async importNotesZip(b: string): Promise<number> { return 0; }
 
   async saveFileDialog(content: string, filename: string, mimeType: string): Promise<void> {
     // 浏览器模式：触发下载

@@ -18,10 +18,17 @@ mod transaction_tests {
     fn test_add_transaction() {
         let (_dir, db) = test_db();
         let tx = Transaction {
-            id: None, date: "2026-06-29".into(), amount: 100.0,
-            transaction_type: "expense".into(), category: "餐饮".into(),
-            note: Some("午餐".into()), created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-29".into(),
+            amount: 100.0,
+            transaction_type: "expense".into(),
+            category: "餐饮".into(),
+            note: Some("午餐".into()),
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         let id = db.add_transaction(&tx).unwrap();
         assert!(id > 0);
@@ -36,18 +43,32 @@ mod transaction_tests {
     fn test_update_transaction() {
         let (_dir, db) = test_db();
         let tx = Transaction {
-            id: None, date: "2026-06-29".into(), amount: 100.0,
-            transaction_type: "expense".into(), category: "餐饮".into(),
-            note: None, created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-29".into(),
+            amount: 100.0,
+            transaction_type: "expense".into(),
+            category: "餐饮".into(),
+            note: None,
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         let id = db.add_transaction(&tx).unwrap();
-        
+
         let updated = Transaction {
-            id: Some(id), date: "2026-06-29".into(), amount: 150.0,
-            transaction_type: "expense".into(), category: "交通".into(),
-            note: Some("出租车".into()), created_at: None, updated_at: None,
-            version: 2, is_deleted: false, checksum: None,
+            id: Some(id),
+            date: "2026-06-29".into(),
+            amount: 150.0,
+            transaction_type: "expense".into(),
+            category: "交通".into(),
+            note: Some("出租车".into()),
+            created_at: None,
+            updated_at: None,
+            version: 2,
+            is_deleted: false,
+            checksum: None,
         };
         db.update_transaction(&updated).unwrap();
 
@@ -60,14 +81,21 @@ mod transaction_tests {
     fn test_delete_transaction() {
         let (_dir, db) = test_db();
         let tx = Transaction {
-            id: None, date: "2026-06-29".into(), amount: 50.0,
-            transaction_type: "expense".into(), category: "餐饮".into(),
-            note: None, created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-29".into(),
+            amount: 50.0,
+            transaction_type: "expense".into(),
+            category: "餐饮".into(),
+            note: None,
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         let id = db.add_transaction(&tx).unwrap();
         db.delete_transaction(id).unwrap();
-        
+
         let txs = db.get_transactions("2026-06-01", "2026-06-30").unwrap();
         assert_eq!(txs.len(), 0);
     }
@@ -76,25 +104,39 @@ mod transaction_tests {
     fn test_transactions_since_version() {
         let (_dir, db) = test_db();
         let tx1 = Transaction {
-            id: None, date: "2026-06-29".into(), amount: 50.0,
-            transaction_type: "expense".into(), category: "餐饮".into(),
-            note: None, created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-29".into(),
+            amount: 50.0,
+            transaction_type: "expense".into(),
+            category: "餐饮".into(),
+            note: None,
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         let id = db.add_transaction(&tx1).unwrap();
-        
+
         let txs = db.get_transactions_since_version(0).unwrap();
         assert_eq!(txs.len(), 1);
 
         // 更新后版本号增加
         let updated = Transaction {
-            id: Some(id), date: "2026-06-29".into(), amount: 80.0,
-            transaction_type: "expense".into(), category: "交通".into(),
-            note: None, created_at: None, updated_at: None,
-            version: 2, is_deleted: false, checksum: None,
+            id: Some(id),
+            date: "2026-06-29".into(),
+            amount: 80.0,
+            transaction_type: "expense".into(),
+            category: "交通".into(),
+            note: None,
+            created_at: None,
+            updated_at: None,
+            version: 2,
+            is_deleted: false,
+            checksum: None,
         };
         db.update_transaction(&updated).unwrap();
-        
+
         let txs = db.get_transactions_since_version(1).unwrap();
         assert_eq!(txs.len(), 1);
         assert!(txs[0].version > 1);
@@ -117,8 +159,12 @@ mod category_tests {
     fn test_add_custom_category() {
         let (_dir, db) = test_db();
         let cat = Category {
-            id: None, name: "宠物".into(), category_type: "expense".into(),
-            icon: Some("pets".into()), color: Some("#FF6B6B".into()), is_default: false,
+            id: None,
+            name: "宠物".into(),
+            category_type: "expense".into(),
+            icon: Some("pets".into()),
+            color: Some("#FF6B6B".into()),
+            is_default: false,
         };
         let id = db.add_category(&cat).unwrap();
         assert!(id > 0);
@@ -134,8 +180,9 @@ mod note_tests {
     #[test]
     fn test_save_and_get_note() {
         let (_dir, db) = test_db();
-        db.save_note("2026-06-29", "# 测试笔记\n\n这是内容").unwrap();
-        
+        db.save_note("2026-06-29", "# 测试笔记\n\n这是内容")
+            .unwrap();
+
         let content = db.get_note("2026-06-29").unwrap();
         assert!(content.is_some());
         assert!(content.unwrap().contains("测试笔记"));
@@ -150,7 +197,7 @@ mod note_tests {
         let (_dir, db) = test_db();
         db.save_note("2026-06-29", "内容").unwrap();
         db.delete_note("2026-06-29").unwrap();
-        
+
         let content = db.get_note("2026-06-29").unwrap();
         assert!(content.is_none());
     }
@@ -170,8 +217,12 @@ mod analysis_tests {
                 amount: 50.0,
                 transaction_type: "expense".into(),
                 category: "餐饮".into(),
-                note: None, created_at: None, updated_at: None,
-                version: 1, is_deleted: false, checksum: None,
+                note: None,
+                created_at: None,
+                updated_at: None,
+                version: 1,
+                is_deleted: false,
+                checksum: None,
             };
             db.add_transaction(&tx).unwrap();
         }
@@ -184,13 +235,20 @@ mod analysis_tests {
     fn test_monthly_analysis() {
         let (_dir, db) = test_db();
         let tx = Transaction {
-            id: None, date: "2026-06-15".into(), amount: 1000.0,
-            transaction_type: "income".into(), category: "工资".into(),
-            note: None, created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-15".into(),
+            amount: 1000.0,
+            transaction_type: "income".into(),
+            category: "工资".into(),
+            note: None,
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         db.add_transaction(&tx).unwrap();
-        
+
         let analysis = db.get_monthly_analysis(2026, 6).unwrap();
         assert!(analysis.total_income > 0.0);
         assert_eq!(analysis.income_by_category[0].category, "工资");
@@ -204,21 +262,28 @@ mod export_tests {
     fn test_export_and_import() {
         let (_dir, db) = test_db();
         let tx = Transaction {
-            id: None, date: "2026-06-29".into(), amount: 50.0,
-            transaction_type: "expense".into(), category: "餐饮".into(),
-            note: Some("午餐".into()), created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-29".into(),
+            amount: 50.0,
+            transaction_type: "expense".into(),
+            category: "餐饮".into(),
+            note: Some("午餐".into()),
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         db.add_transaction(&tx).unwrap();
 
         // 导出
-        let json = db.export_all_data().unwrap();
+        let json = db.export_system_json().unwrap();
         assert!(json.contains("餐饮"));
 
         // 导入到新数据库
         let (_dir2, db2) = test_db();
-        db2.import_data(&json, false).unwrap();
-        
+        db2.import_system_json(&json, false).unwrap();
+
         let txs = db2.get_all_transactions().unwrap();
         assert_eq!(txs.len(), 1);
         assert_eq!(txs[0].amount, 50.0);
@@ -228,14 +293,23 @@ mod export_tests {
     fn test_csv_export() {
         let (_dir, db) = test_db();
         let tx = Transaction {
-            id: None, date: "2026-06-29".into(), amount: 50.0,
-            transaction_type: "expense".into(), category: "餐饮".into(),
-            note: None, created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-29".into(),
+            amount: 50.0,
+            transaction_type: "expense".into(),
+            category: "餐饮".into(),
+            note: None,
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         db.add_transaction(&tx).unwrap();
-        
-        let csv = db.export_transactions_csv("2026-06-01", "2026-06-30").unwrap();
+
+        let csv = db
+            .export_accounting_csv("2026-06-01", "2026-06-30")
+            .unwrap();
         assert!(csv.contains("餐饮"));
         assert!(csv.contains("50"));
     }
@@ -244,13 +318,20 @@ mod export_tests {
     fn test_data_integrity() {
         let (_dir, db) = test_db();
         let tx = Transaction {
-            id: None, date: "2026-06-29".into(), amount: 50.0,
-            transaction_type: "expense".into(), category: "餐饮".into(),
-            note: None, created_at: None, updated_at: None,
-            version: 1, is_deleted: false, checksum: None,
+            id: None,
+            date: "2026-06-29".into(),
+            amount: 50.0,
+            transaction_type: "expense".into(),
+            category: "餐饮".into(),
+            note: None,
+            created_at: None,
+            updated_at: None,
+            version: 1,
+            is_deleted: false,
+            checksum: None,
         };
         db.add_transaction(&tx).unwrap();
-        
+
         assert!(db.validate_data_integrity().unwrap());
     }
 }

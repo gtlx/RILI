@@ -30,28 +30,38 @@ impl Database {
             let mut stmt = conn.prepare(
                 "SELECT date, COALESCE(SUM(amount),0) FROM transactions
                  WHERE transaction_type='expense' AND date>=?1 AND date<=?2 AND is_deleted=0
-                 GROUP BY date ORDER BY date ASC"
+                 GROUP BY date ORDER BY date ASC",
             )?;
             let rows = stmt.query_map(rusqlite::params![ss, es], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
             })?;
-            let mut map: std::collections::HashMap<String, f64> = rows.filter_map(|r| r.ok()).collect();
+            let mut map: std::collections::HashMap<String, f64> =
+                rows.filter_map(|r| r.ok()).collect();
             let mut daily = Vec::new();
             for i in 0..7 {
                 let day = s(start + chrono::Duration::days(i));
                 let amt = map.remove(&day).unwrap_or(0.0);
-                daily.push(DailyAmount { date: day, amount: amt });
+                daily.push(DailyAmount {
+                    date: day,
+                    amount: amt,
+                });
             }
             daily
         };
 
         Ok(WeeklyAnalysis {
-            week_start: ss.clone(), week_end: es.clone(),
-            total_income, total_expense,
+            week_start: ss.clone(),
+            week_end: es.clone(),
+            total_income,
+            total_expense,
             income_by_category: Self::sum_by_category(&conn, "income", &ss, &es),
             expense_by_category: Self::sum_by_category(&conn, "expense", &ss, &es),
             daily_expense,
-            compare_to_last_week: if last_expense > 0.0 { ((total_expense - last_expense) / last_expense) * 100.0 } else { 0.0 },
+            compare_to_last_week: if last_expense > 0.0 {
+                ((total_expense - last_expense) / last_expense) * 100.0
+            } else {
+                0.0
+            },
         })
     }
 
@@ -64,7 +74,11 @@ impl Database {
         } else {
             NaiveDate::from_ymd_opt(year, month + 1, 1).unwrap() - chrono::Duration::days(1)
         };
-        let (lm, ly) = if month == 1 { (12, year - 1) } else { (month - 1, year) };
+        let (lm, ly) = if month == 1 {
+            (12, year - 1)
+        } else {
+            (month - 1, year)
+        };
         let ls = NaiveDate::from_ymd_opt(ly, lm, 1).unwrap();
         let le = if lm == 12 {
             NaiveDate::from_ymd_opt(ly + 1, 1, 1).unwrap() - chrono::Duration::days(1)
@@ -87,27 +101,50 @@ impl Database {
         )?;
 
         let mut top = Self::sum_by_category(&conn, "expense", &ss, &es);
-        top.sort_by(|a, b| b.amount.partial_cmp(&a.amount).unwrap_or(std::cmp::Ordering::Equal));
+        top.sort_by(|a, b| {
+            b.amount
+                .partial_cmp(&a.amount)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         top.truncate(5);
 
         Ok(MonthlyAnalysis {
-            month: format!("{:02}", month), year,
-            total_income, total_expense,
+            month: format!("{:02}", month),
+            year,
+            total_income,
+            total_expense,
             income_by_category: Self::sum_by_category(&conn, "income", &ss, &es),
             expense_by_category: Self::sum_by_category(&conn, "expense", &ss, &es),
-            compare_to_last_month: if last_expense > 0.0 { ((total_expense - last_expense) / last_expense) * 100.0 } else { 0.0 },
+            compare_to_last_month: if last_expense > 0.0 {
+                ((total_expense - last_expense) / last_expense) * 100.0
+            } else {
+                0.0
+            },
             top_categories: top,
         })
     }
 
-    fn sum_by_category(conn: &rusqlite::Connection, tx_type: &str, start: &str, end: &str) -> Vec<CategoryAmount> {
-        let mut stmt = conn.prepare(
-            "SELECT category, SUM(amount) FROM transactions
+    fn sum_by_category(
+        conn: &rusqlite::Connection,
+        tx_type: &str,
+        start: &str,
+        end: &str,
+    ) -> Vec<CategoryAmount> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT category, SUM(amount) FROM transactions
              WHERE transaction_type=?1 AND date>=?2 AND date<=?3 AND is_deleted=0
-             GROUP BY category ORDER BY SUM(amount) DESC"
-        ).unwrap();
+             GROUP BY category ORDER BY SUM(amount) DESC",
+            )
+            .unwrap();
         stmt.query_map(rusqlite::params![tx_type, start, end], |row| {
-            Ok(CategoryAmount { category: row.get(0)?, amount: row.get(1)? })
-        }).unwrap().filter_map(|r| r.ok()).collect()
+            Ok(CategoryAmount {
+                category: row.get(0)?,
+                amount: row.get(1)?,
+            })
+        })
+        .unwrap()
+        .filter_map(|r| r.ok())
+        .collect()
     }
 }

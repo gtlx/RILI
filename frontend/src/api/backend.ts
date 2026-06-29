@@ -104,14 +104,19 @@ export interface BackendAdapter {
   getLastSyncTime(): Promise<string | null>;
   getSyncMetadata(): Promise<SyncMetadata>;
 
-  // Export/Import
-  exportAllData(): Promise<string>;
-  importData(jsonData: string, merge: boolean): Promise<void>;
-  exportTransactionsCsv(startDate: string, endDate: string): Promise<string>;
-  importTransactionsCsv(csvData: string): Promise<number>;
-  exportNotesZip(): Promise<string>;
+  // ── 系统数据: JSON（备份/迁移）──
+  exportSystemJson(): Promise<string>;
+  importSystemJson(jsonData: string, merge: boolean): Promise<void>;
   validateDataIntegrity(): Promise<boolean>;
   computeFullChecksum(): Promise<string>;
+
+  // ── 记账: CSV（导入其他软件分析）──
+  exportAccountingCsv(startDate: string, endDate: string): Promise<string>;
+  importAccountingCsv(csvData: string): Promise<number>;
+
+  // ── 笔记: ZIP──
+  exportNotesZip(): Promise<string>;
+  importNotesZip(base64Data: string): Promise<number>;
 
   // 文件保存（跨平台：Tauri 用对话框，浏览器用下载）
   saveFileDialog(content: string, filename: string, mimeType: string): Promise<void>;

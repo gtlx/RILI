@@ -163,15 +163,15 @@ fn main() {
             Ok(())
         }
         Commands::Export { path } => {
-            let data = app.db.export_all_data()?;
+            let data = app.db.export_system_json()?;
             std::fs::write(&path, &data)?;
-            println!("Exported to {}", path);
+            println!("Exported system data to {}", path);
             Ok(())
         }
         Commands::Import { path, merge } => {
             let data = std::fs::read_to_string(&path)?;
-            app.db.import_data(&data, merge)?;
-            println!("Imported from {}", path);
+            app.db.import_system_json(&data, merge)?;
+            println!("Imported system data from {}", path);
             Ok(())
         }
         Commands::Status => {
