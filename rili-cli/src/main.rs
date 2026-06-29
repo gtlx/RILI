@@ -19,6 +19,8 @@ enum Commands {
         category: String,
         note: Option<String>,
     },
+    /// 删除交易记录
+    DeleteTx { id: i64 },
     /// 列出交易记录
     ListTx { start: String, end: String },
     /// 列出所有笔记
@@ -82,6 +84,11 @@ fn main() {
             };
             let id = app.db.add_transaction(&tx)?;
             println!("Added transaction: id={}", id);
+            Ok(())
+        }
+        Commands::DeleteTx { id } => {
+            app.db.delete_transaction(id)?;
+            println!("Deleted transaction: id={}", id);
             Ok(())
         }
         Commands::ListTx { start, end } => {

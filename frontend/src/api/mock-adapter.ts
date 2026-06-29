@@ -70,4 +70,18 @@ export class MockBackend implements BackendAdapter {
   async exportNotesZip(): Promise<string> { return ''; }
   async validateDataIntegrity(): Promise<boolean> { return true; }
   async computeFullChecksum(): Promise<string> { return ''; }
+
+  async saveFileDialog(content: string, filename: string, mimeType: string): Promise<void> {
+    // 浏览器模式：触发下载
+    const blob = new Blob(
+      [Uint8Array.from(atob(content), c => c.charCodeAt(0))],
+      { type: mimeType }
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }

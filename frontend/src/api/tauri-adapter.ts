@@ -46,4 +46,19 @@ export class TauriBackend implements BackendAdapter {
   async exportNotesZip(): Promise<string> { return invoke('export_notes_zip'); }
   async validateDataIntegrity(): Promise<boolean> { return invoke('validate_data_integrity'); }
   async computeFullChecksum(): Promise<string> { return invoke('compute_full_checksum'); }
+
+  async saveFileDialog(content: string, filename: string, _mimeType: string): Promise<void> {
+    const { save } = await import('@tauri-apps/plugin-dialog');
+    const { writeFile } = await import('@tauri-apps/plugin-fs');
+    const filePath = await save({
+      defaultPath: filename,
+      filters: [{ name: filename.split('.').pop()?.toUpperCase() || 'File', extensions: [filename.split('.').pop() || ''] }]
+    });
+    if (filePath) {
+      const binaryData = atob(content);
+      const bytes = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) bytes[i] = binaryData.charCodeAt(i);
+      await writeFile(filePath, bytes);
+    }
+  }
 }

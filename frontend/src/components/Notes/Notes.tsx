@@ -4,8 +4,7 @@ import { zhCN } from 'date-fns/locale';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAppStore } from '../../stores/appStore';
-import { save } from '@tauri-apps/plugin-dialog';
-import { writeFile } from '@tauri-apps/plugin-fs';
+import { backend } from '../../api';
 
 export const Notes: React.FC = () => {
   const { notes, loadNotes, loadNote, currentNoteContent, saveNote, deleteNote, exportNotesZip } = useAppStore();
@@ -46,19 +45,8 @@ export const Notes: React.FC = () => {
   const handleExportNotes = async () => {
     try {
       const base64Data = await exportNotesZip();
-      const filePath = await save({
-        defaultPath: 'notes.zip',
-        filters: [{ name: 'ZIP', extensions: ['zip'] }]
-      });
-      if (filePath) {
-        const binaryData = atob(base64Data);
-        const bytes = new Uint8Array(binaryData.length);
-        for (let i = 0; i < binaryData.length; i++) {
-          bytes[i] = binaryData.charCodeAt(i);
-        }
-        await writeFile(filePath, bytes);
-        alert('笔记导出成功！');
-      }
+      await backend.saveFileDialog(base64Data, 'notes.zip', 'application/zip');
+      alert('笔记导出成功！');
     } catch (e) {
       alert('导出失败: ' + String(e));
     }

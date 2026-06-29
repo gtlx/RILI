@@ -112,4 +112,7 @@ export interface BackendAdapter {
   exportNotesZip(): Promise<string>;
   validateDataIntegrity(): Promise<boolean>;
   computeFullChecksum(): Promise<string>;
+
+  // 文件保存（跨平台：Tauri 用对话框，浏览器用下载）
+  saveFileDialog(content: string, filename: string, mimeType: string): Promise<void>;
 }
