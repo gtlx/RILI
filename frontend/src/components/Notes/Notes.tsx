@@ -42,6 +42,19 @@ export const Notes: React.FC = () => {
     setIsEditing(false);
   };
 
+  const handleCreateTodayNote = async () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    // 检查是否已有今日笔记
+    const existing = notes.find(n => n.date === today);
+    if (existing) {
+      handleSelectNote(today);
+      return;
+    }
+    await saveNote(today, '# ' + format(new Date(), 'yyyy年M月d日') + ' 笔记\n\n');
+    await loadNotes();
+    handleSelectNote(today);
+  };
+
   const handleExportNotes = async () => {
     try {
       const base64Data = await exportNotesZip();
@@ -111,13 +124,18 @@ export const Notes: React.FC = () => {
 
   return (
     <div className="notes-list">
-      {notes.length > 0 && (
-        <div style={{ marginBottom: '16px' }}>
-          <button className="btn btn-secondary btn-sm" onClick={handleExportNotes}>
-            导出所有笔记
+      <div style={{ marginBottom: '12px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <button className="btn btn-primary btn-sm" onClick={handleCreateTodayNote}
+          style={{ fontSize: '20px', lineHeight: '1', padding: '4px 12px' }}>
+          +
+        </button>
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>添加今日笔记</span>
+        {notes.length > 0 && (
+          <button className="btn btn-secondary btn-sm" onClick={handleExportNotes} style={{ marginLeft: 'auto' }}>
+            导出
           </button>
-        </div>
-      )}
+        )}
+      </div>
       {notes.length === 0 ? (
         <div className="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="64" height="64">
@@ -127,7 +145,7 @@ export const Notes: React.FC = () => {
             <line x1="16" y1="17" x2="8" y2="17" />
           </svg>
           <div className="empty-state-title">暂无笔记</div>
-          <p>点击日历上的日期添加笔记</p>
+          <p>点击 + 按钮创建今日笔记</p>
         </div>
       ) : (
         <div className="notes-grid">

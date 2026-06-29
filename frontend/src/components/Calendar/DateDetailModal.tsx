@@ -67,6 +67,14 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
       setCategory('');
       setNote('');
       setActiveTab('all');
+      // 立即重新加载当月交易，确保弹窗显示新记录
+      const { loadTransactions, selectedDate } = useAppStore.getState();
+      const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      const end = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+      await loadTransactions(
+        start.toISOString().split('T')[0],
+        end.toISOString().split('T')[0]
+      );
     } catch (e) {
       alert('保存失败: ' + String(e));
     }
