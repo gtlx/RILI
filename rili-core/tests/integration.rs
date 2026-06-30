@@ -1,6 +1,6 @@
-use crate::database::Database;
-use crate::models::*;
-use crate::utils::Error;
+use rili_core::database::Database;
+use rili_core::models::*;
+use rili_core::utils::Error;
 use std::path::Path;
 use std::sync::Arc;
 
