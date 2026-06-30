@@ -49,7 +49,7 @@ fn get_data_dir() -> std::path::PathBuf {
         .join("rili-app")
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let cli = Cli::parse();
     let data_dir = get_data_dir();
@@ -61,7 +61,7 @@ fn main() {
         }
     };
 
-    let result = match cli.command {
+    let _result: Result<(), Box<dyn std::error::Error>> = match cli.command {
         Commands::AddTx {
             date,
             amount,
@@ -188,8 +188,9 @@ fn main() {
         }
     };
 
-    if let Err(e) = result {
+    if let Err(e) = _result {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }
+    Ok(())
 }
