@@ -145,6 +145,17 @@ export class MockBackend implements BackendAdapter {
     return count;
   }
 
+  async gitInit(): Promise<void> {}
+  async gitCommit(_message: string): Promise<void> {}
+  async gitLog(_maxCount: number): Promise<string[]> { return []; }
+  async gitSetRemote(_url: string): Promise<void> {}
+  async gitRemoveRemote(): Promise<void> {}
+  async gitGetRemoteUrl(): Promise<string | null> { return null; }
+  async gitPush(): Promise<string> { return 'mock: push ok'; }
+  async gitPull(): Promise<string> { return 'mock: pull ok'; }
+
+  async getTransactionAudit(_limit: number): Promise<import('./backend').TransactionAudit[]> { return []; }
+
   async saveFileDialog(content: string, filename: string, mimeType: string): Promise<void> {
     // 浏览器模式：触发下载
     const blob = new Blob(

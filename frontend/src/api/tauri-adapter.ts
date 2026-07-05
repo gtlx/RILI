@@ -60,6 +60,17 @@ export class TauriBackend implements BackendAdapter {
   async getRecurringRules(): Promise<RecurringRule[]> { return invoke('get_recurring_rules'); }
   async generateRecurringTransactions(endDate: string): Promise<number> { return invoke('generate_recurring_transactions', { endDate }); }
 
+  async gitInit(): Promise<void> { return invoke('git_init'); }
+  async gitCommit(message: string): Promise<void> { return invoke('git_commit', { message }); }
+  async gitLog(maxCount: number): Promise<string[]> { return invoke('git_log', { maxCount }); }
+  async gitSetRemote(url: string): Promise<void> { return invoke('git_set_remote', { url }); }
+  async gitRemoveRemote(): Promise<void> { return invoke('git_remove_remote'); }
+  async gitGetRemoteUrl(): Promise<string | null> { return invoke('git_get_remote_url'); }
+  async gitPush(): Promise<string> { return invoke('git_push'); }
+  async gitPull(): Promise<string> { return invoke('git_pull'); }
+
+  async getTransactionAudit(limit: number): Promise<import('./backend').TransactionAudit[]> { return invoke('get_transaction_audit', { limit }); }
+
   async saveFileDialog(content: string, filename: string, _mimeType: string): Promise<void> {
     const { save } = await import('@tauri-apps/plugin-dialog');
     const { writeFile } = await import('@tauri-apps/plugin-fs');

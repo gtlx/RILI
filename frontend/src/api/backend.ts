@@ -83,6 +83,15 @@ export interface SyncMetadata {
 export type ViewType = 'calendar' | 'accounting' | 'notes' | 'settings';
 export type Theme = 'light' | 'dark' | 'system';
 
+export interface TransactionAudit {
+  id: number;
+  transaction_id: number;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  old_data: string | null;
+  new_data: string | null;
+  created_at: string;
+}
+
 export interface BackendAdapter {
   // Transactions
   addTransaction(transaction: Transaction): Promise<number>;
@@ -138,6 +147,19 @@ export interface BackendAdapter {
   deleteRecurringRule(id: number): Promise<void>;
   getRecurringRules(): Promise<RecurringRule[]>;
   generateRecurringTransactions(endDate: string): Promise<number>;
+
+  // ── 笔记 Git 同步 ──
+  gitInit(): Promise<void>;
+  gitCommit(message: string): Promise<void>;
+  gitLog(maxCount: number): Promise<string[]>;
+  gitSetRemote(url: string): Promise<void>;
+  gitRemoveRemote(): Promise<void>;
+  gitGetRemoteUrl(): Promise<string | null>;
+  gitPush(): Promise<string>;
+  gitPull(): Promise<string>;
+
+  // ── 交易审计 ──
+  getTransactionAudit(limit: number): Promise<TransactionAudit[]>;
 
   // 文件保存（跨平台：Tauri 用对话框，浏览器用下载）
   saveFileDialog(content: string, filename: string, mimeType: string): Promise<void>;

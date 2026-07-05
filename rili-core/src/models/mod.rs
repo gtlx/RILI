@@ -1,4 +1,5 @@
 pub mod analysis;
+pub mod audit;
 pub mod category;
 pub mod note;
 pub mod recurring;
@@ -7,6 +8,7 @@ pub mod sync;
 pub mod transaction;
 
 pub use analysis::*;
+pub use audit::*;
 pub use category::*;
 pub use note::*;
 pub use recurring::*;

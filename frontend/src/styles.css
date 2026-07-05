@@ -314,7 +314,7 @@ body {
 .calendar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   padding: 16px;
 }
 
@@ -322,6 +322,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .calendar-nav-center {
@@ -331,32 +332,23 @@ body {
 }
 
 .calendar-title {
+  flex: 1;
+  text-align: center;
   font-size: 18px;
   font-weight: 600;
-  min-width: 200px;
-  text-align: center;
+}
+
+.calendar-header-right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   grid-template-rows: auto repeat(6, minmax(90px, 1fr));
-}
-
-.calendar-day {
-  min-height: 90px;
-  border: 1px solid var(--border);
-  border-top: none;
-  border-left: none;
-  padding: 4px;
-  cursor: pointer;
-  transition: background var(--transition);
-  background: var(--card-bg);
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  outline: none;
-  display: flex;
-  flex-direction: column;
 }
 
 .calendar-weekday-row {
@@ -398,7 +390,11 @@ body {
 }
 
 .calendar-day:hover {
-  background: var(--bg);
+  background: #EEF2FF;
+}
+
+.calendar-day:hover .calendar-day-number {
+  color: var(--primary);
 }
 
 .calendar-day:focus-visible {
@@ -423,22 +419,28 @@ body {
   position: relative;
 }
 
-.calendar-day-number {
-  font-weight: 500;
-  margin-bottom: 2px;
-  text-align: center;
-  font-size: 14px;
+.calendar-day-top {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
 }
 
-.calendar-day.today .calendar-day-number {
-  color: var(--primary);
+.calendar-day-number {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .calendar-day-markers {
   display: flex;
-  gap: 4px;
-  margin-top: 4px;
+  gap: 3px;
+  align-items: center;
+}
+
+.calendar-day.today .calendar-day-number {
+  color: var(--primary);
 }
 
 .calendar-marker {
@@ -473,6 +475,16 @@ body {
   box-shadow: var(--shadow);
   padding: 12px;
   min-height: 200px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.week-day:hover {
+  background: #EEF2FF;
+}
+
+.week-day:hover .week-day-date {
+  color: var(--primary);
 }
 
 .week-day-header {
@@ -1140,6 +1152,7 @@ body {
   margin-top: 6px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
 }
 

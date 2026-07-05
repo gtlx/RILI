@@ -66,6 +66,15 @@ pub fn run() {
             commands::io::import_notes_zip,
             commands::io::validate_data_integrity,
             commands::io::compute_full_checksum,
+            commands::io::git_init,
+            commands::io::git_commit,
+            commands::io::git_log,
+            commands::io::git_set_remote,
+            commands::io::git_remove_remote,
+            commands::io::git_get_remote_url,
+            commands::io::git_push,
+            commands::io::git_pull,
+            commands::audit::get_transaction_audit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

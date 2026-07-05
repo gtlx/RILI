@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, getDayOfYear, getWeek } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAppStore } from '../../stores/appStore';
 import lunarCalendar from 'lunar-calendar';
@@ -129,6 +129,21 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
                     <span className="date-info-value holiday">{holiday}</span>
                   </div>
                 )}
+              </div>
+
+              <div className="date-info-card" style={{ marginTop: '12px' }}>
+                <div className="date-info-row">
+                  <span className="date-info-label">今年第</span>
+                  <span className="date-info-value">{getDayOfYear(date)} 天</span>
+                </div>
+                <div className="date-info-row">
+                  <span className="date-info-label">第</span>
+                  <span className="date-info-value">{getWeek(date)} 周</span>
+                </div>
+                <div className="date-info-row">
+                  <span className="date-info-label">季度</span>
+                  <span className="date-info-value">第 {Math.floor(date.getMonth() / 3) + 1} 季度</span>
+                </div>
               </div>
             </div>
           )}

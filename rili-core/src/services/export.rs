@@ -154,25 +154,59 @@ impl Database {
 
     /// 从 CSV 导入记账，返回导入条数
     pub fn import_accounting_csv(&self, csv_data: &str) -> Result<i64, Error> {
+        use std::collections::HashMap;
         let conn = self.conn();
         let mut rdr = csv::ReaderBuilder::new()
             .flexible(true)
             .from_reader(csv_data.as_bytes());
         let mut count = 0i64;
+
+        let headers: Vec<String> = rdr.headers().ok().map(|h| {
+            h.iter().map(|s| s.trim().to_lowercase().replace([' ', '_', '-'], "")).collect()
+        }).unwrap_or_default();
+
+        let col_map: HashMap<&str, usize> = [
+            ("date", headers.iter().position(|h| h == "date" || h == "日期")),
+            ("type", headers.iter().position(|h| h == "type" || h == "transactiontype" || h == "transaction_type" || h == "类型")),
+            ("amount", headers.iter().position(|h| h == "amount" || h == "金额")),
+            ("category", headers.iter().position(|h| h == "category" || h == "分类")),
+            ("note", headers.iter().position(|h| h == "note" || h == "备注" || h == "notes")),
+        ].iter().filter_map(|(k, v)| v.map(|i| (*k, i))).collect();
+
+        let use_headers = !col_map.is_empty();
+
         for result in rdr.records() {
             let record = result?;
-            if record.len() < 4 {
+            let get = |key: &str, idx: usize| -> Option<String> {
+                if use_headers {
+                    col_map.get(key).and_then(|&i| record.get(i)).map(|s| s.trim().to_string())
+                } else {
+                    record.get(idx).map(|s| s.trim().to_string())
+                }
+            };
+            let date = get("date", 0).filter(|s| !s.is_empty());
+            let tx_type = get("type", 1).filter(|s| !s.is_empty());
+            let amount_str = get("amount", 2).filter(|s| !s.is_empty());
+            let category = get("category", 3).filter(|s| !s.is_empty());
+            let note = get("note", 4).filter(|s| !s.is_empty());
+
+            if use_headers && (date.is_none() || tx_type.is_none() || amount_str.is_none() || category.is_none()) {
                 continue;
             }
-            let date = record[0].trim().to_string();
-            let tx_type = record[1].trim().to_string();
-            let amount: f64 = record[2].trim().parse().unwrap_or(0.0);
-            let category = record[3].trim().to_string();
-            let note = if record.len() > 4 && !record[4].is_empty() {
-                Some(record[4].trim().to_string())
-            } else {
-                None
-            };
+            if !use_headers && record.len() < 4 {
+                continue;
+            }
+
+            let date = date.unwrap_or_default();
+            let tx_type = tx_type.unwrap_or_default();
+            let amount: f64 = amount_str.and_then(|s| s.parse().ok()).unwrap_or(0.0);
+            let category = category.unwrap_or_default();
+            let note = note.filter(|s| !s.is_empty());
+
+            if date.is_empty() || tx_type.is_empty() || amount == 0.0 || category.is_empty() {
+                continue;
+            }
+
             conn.execute("INSERT INTO transactions (date, amount, transaction_type, category, note) VALUES (?1,?2,?3,?4,?5)",
                 rusqlite::params![date, amount, tx_type, category, note])?;
             count += 1;

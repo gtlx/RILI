@@ -1,4 +1,5 @@
 pub mod analysis;
+pub mod audit;
 pub mod categories;
 pub mod io;
 pub mod notes;

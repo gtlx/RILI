@@ -21,6 +21,7 @@ export const Accounting: React.FC = () => {
   const [selectedWeek] = useState(getWeek(new Date()));
   const [yearData, setYearData] = useState<YearMonthData[]>([]);
   const [initialBalance, setInitialBalance] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const {
     loadTransactions, weeklyAnalysis, monthlyAnalysis,
@@ -137,7 +138,16 @@ export const Accounting: React.FC = () => {
             <button className={`btn btn-sm ${view === 'records' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('records')}>记录</button>
           </div>
           <div className="calendar-title">{getTitle()}</div>
-          <div style={{ width: '60px' }}></div>
+          <div className="calendar-header-right">
+            <input
+              className="input"
+              type="text"
+              placeholder="搜索分类/备注..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ height: '28px', fontSize: '12px', width: '160px', padding: '0 8px' }}
+            />
+          </div>
         </div>
       </div>
 

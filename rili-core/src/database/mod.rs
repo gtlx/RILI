@@ -1,4 +1,5 @@
 pub mod analysis_repo;
+pub mod audit_repo;
 pub mod category_repo;
 pub mod note_repo;
 pub mod recurring_repo;
@@ -41,6 +42,8 @@ impl Database {
         conn.execute_batch(sql)?;
         let sql2 = include_str!("../../migrations/002_recurring.sql");
         conn.execute_batch(sql2)?;
+        let sql3 = include_str!("../../migrations/003_transaction_audit.sql");
+        conn.execute_batch(sql3)?;
         Ok(())
     }
 

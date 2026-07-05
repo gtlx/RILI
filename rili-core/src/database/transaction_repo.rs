@@ -26,16 +26,28 @@ impl Database {
         )?;
         drop(conn);
         self.add_to_sync_queue("transactions", id, "INSERT")?;
+        let new_data = serde_json::json!({
+            "date": t.date,
+            "amount": t.amount,
+            "transaction_type": t.transaction_type,
+            "category": t.category,
+            "note": t.note,
+        });
+        self.log_transaction_audit(id, "INSERT", None, Some(&new_data.to_string()))?;
         Ok(id)
     }
 
     pub fn update_transaction(&self, t: &Transaction) -> Result<(), Error> {
         let conn = self.conn();
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let version: i64 = conn.query_row(
-            "SELECT version FROM transactions WHERE id = ?1",
+        let (version, old_date, old_amount, old_type, old_category, old_note): (
+            i64, String, f64, String, String, Option<String>,
+        ) = conn.query_row(
+            "SELECT version, date, amount, transaction_type, category, note FROM transactions WHERE id = ?1",
             rusqlite::params![t.id],
-            |row| row.get(0),
+            |row| Ok((
+                row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?,
+            )),
         )?;
         conn.execute(
             "UPDATE transactions SET date=?1, amount=?2, transaction_type=?3, category=?4, note=?5, version=?6, updated_at=?7, checksum='' WHERE id=?8",
@@ -55,16 +67,35 @@ impl Database {
         )?;
         drop(conn);
         self.add_to_sync_queue("transactions", t.id.unwrap(), "UPDATE")?;
+        let new_data = serde_json::json!({
+            "date": t.date,
+            "amount": t.amount,
+            "transaction_type": t.transaction_type,
+            "category": t.category,
+            "note": t.note,
+        });
+        let old_data = serde_json::json!({
+            "date": old_date,
+            "amount": old_amount,
+            "transaction_type": old_type,
+            "category": old_category,
+            "note": old_note,
+        });
+        self.log_transaction_audit(t.id.unwrap(), "UPDATE", Some(&old_data.to_string()), Some(&new_data.to_string()))?;
         Ok(())
     }
 
     pub fn delete_transaction(&self, id: i64) -> Result<(), Error> {
         let conn = self.conn();
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-        let version: i64 = conn.query_row(
-            "SELECT version FROM transactions WHERE id=?1",
+        let (version, old_date, old_amount, old_type, old_category, old_note): (
+            i64, String, f64, String, String, Option<String>,
+        ) = conn.query_row(
+            "SELECT version, date, amount, transaction_type, category, note FROM transactions WHERE id=?1",
             rusqlite::params![id],
-            |row| row.get(0),
+            |row| Ok((
+                row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?,
+            )),
         )?;
         conn.execute(
             "UPDATE transactions SET is_deleted=1, version=?1, updated_at=?2 WHERE id=?3",
@@ -72,6 +103,14 @@ impl Database {
         )?;
         drop(conn);
         self.add_to_sync_queue("transactions", id, "DELETE")?;
+        let old_data = serde_json::json!({
+            "date": old_date,
+            "amount": old_amount,
+            "transaction_type": old_type,
+            "category": old_category,
+            "note": old_note,
+        });
+        self.log_transaction_audit(id, "DELETE", Some(&old_data.to_string()), None)?;
         Ok(())
     }
 

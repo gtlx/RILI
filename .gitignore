@@ -29,3 +29,6 @@ rili-tauri/gen/
 # Env
 .env
 .env.local
+
+# github
+.github

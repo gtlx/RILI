@@ -41,6 +41,8 @@ export const Settings: React.FC = () => {
   const [recurStatus, setRecurStatus] = useState('');
   const [generating, setGenerating] = useState(false);
 
+  const [auditLogs, setAuditLogs] = useState<import('../../api/backend').TransactionAudit[]>([]);
+
   const togglePlugin = (name: string) => {
     const plugin = pluginManager.getPlugin(name);
     if (plugin) {
@@ -515,8 +517,8 @@ export const Settings: React.FC = () => {
               </button>
             </div>
             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
-              格式: 日期,类型(income/expense),金额,分类,备注<br />
-              示例: 2026-06-29,expense,25.50,餐饮,午餐
+               格式: 首行可选列名(日期,类型,金额,分类,备注)，支持中文/英文列名<br />
+               示例: 2026-06-29,expense,25.50,餐饮,午餐
             </p>
           </div>
 
@@ -706,6 +708,111 @@ export const Settings: React.FC = () => {
                 onClick={() => rule.id && handleDeleteRecurringRule(rule.id)}>删除</button>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-header">笔记 Git 同步</div>
+        <div className="settings-section-body">
+          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+            将笔记目录初始化为 Git 仓库，支持版本历史管理和推送到远程仓库
+          </p>
+
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <button className="btn btn-secondary" onClick={async () => {
+              try { await backend.gitInit(); alert('Git 仓库初始化成功'); } catch (e) { alert('初始化失败: ' + e); }
+            }}>初始化仓库</button>
+            <button className="btn btn-secondary" onClick={async () => {
+              try { await backend.gitCommit('笔记更新 ' + new Date().toISOString().split('T')[0]); alert('提交成功'); } catch (e) { alert('提交失败: ' + e); }
+            }}>提交</button>
+            <button className="btn btn-secondary" onClick={async () => {
+              try { const log = await backend.gitLog(10); alert(log.join('\n') || '暂无提交记录'); } catch (e) { alert('查看失败: ' + e); }
+            }}>历史</button>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">远程仓库地址</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input className="input" id="gitRemoteUrl" style={{ flex: 1 }} placeholder="git@github.com:user/notes.git" />
+              <button className="btn btn-secondary" onClick={async () => {
+                const url = (document.getElementById('gitRemoteUrl') as HTMLInputElement)?.value;
+                if (!url) return;
+                try { await backend.gitSetRemote(url); alert('远程仓库地址已设置'); } catch (e) { alert('设置失败: ' + e); }
+              }}>设置</button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn-secondary" onClick={async () => {
+              try { const url = await backend.gitGetRemoteUrl(); alert(url || '未设置远程仓库'); } catch (e) { alert('获取失败: ' + e); }
+            }}>查看远程地址</button>
+            <button className="btn btn-secondary" onClick={async () => {
+              try { await backend.gitRemoveRemote(); alert('远程地址已移除'); } catch (e) { alert('移除失败: ' + e); }
+            }}>移除远程</button>
+            <button className="btn btn-primary" onClick={async () => {
+              try { const msg = await backend.gitPush(); alert('推送成功:\n' + msg); } catch (e) { alert('推送失败: ' + e); }
+            }}>推送</button>
+            <button className="btn btn-secondary" onClick={async () => {
+              try { const msg = await backend.gitPull(); alert('拉取成功:\n' + msg); } catch (e) { alert('拉取失败: ' + e); }
+            }}>拉取</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-header">交易审计日志</div>
+        <div className="settings-section-body">
+          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+            记录每笔交易的创建、修改、删除操作及变更前后的数据快照
+          </p>
+          <button className="btn btn-secondary" onClick={async () => {
+            try {
+              const logs = await backend.getTransactionAudit(50);
+              setAuditLogs(logs);
+            } catch (e) {
+              alert('加载失败: ' + e);
+            }
+          }}>加载最近 50 条记录</button>
+          <div style={{ marginTop: '12px' }}>
+            {auditLogs.length === 0 && (
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', padding: '24px' }}>
+                点击上方按钮加载审计日志
+              </p>
+            )}
+            {auditLogs.map(log => (
+              <div key={log.id} style={{
+                border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px',
+                marginBottom: '8px', background: 'var(--bg-primary)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 600, fontSize: '13px' }}>
+                    交易 #{log.transaction_id}
+                    <span style={{
+                      display: 'inline-block', marginLeft: '8px', padding: '0 6px', borderRadius: '4px',
+                      fontSize: '11px', fontWeight: 500,
+                      background: log.action === 'INSERT' ? '#D1FAE5' : log.action === 'UPDATE' ? '#E0E7FF' : '#FEE2E2',
+                      color: log.action === 'INSERT' ? '#10B981' : log.action === 'UPDATE' ? '#4F46E5' : '#EF4444',
+                    }}>
+                      {log.action === 'INSERT' ? '创建' : log.action === 'UPDATE' ? '修改' : '删除'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{log.created_at}</span>
+                </div>
+                {log.old_data && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    <span style={{ color: '#EF4444' }}>旧数据: </span>
+                    <code style={{ fontSize: '11px', wordBreak: 'break-all' }}>{log.old_data}</code>
+                  </div>
+                )}
+                {log.new_data && (
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    <span style={{ color: '#10B981' }}>新数据: </span>
+                    <code style={{ fontSize: '11px', wordBreak: 'break-all' }}>{log.new_data}</code>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

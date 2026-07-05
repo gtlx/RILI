@@ -144,34 +144,17 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                   }
                 }}
               >
-                <div className="calendar-day-number">{format(d, 'd')}</div>
-                {isCurrentMonth && (
-                  <>
+                <div className="calendar-day-top">
+                  <div className="calendar-day-number">{format(d, 'd')}</div>
+                  {isCurrentMonth && (
                     <div className="calendar-day-markers">
                       {hasNote && <span className="calendar-marker note" title="有笔记" />}
                       {hasIncome && <span className="calendar-marker income" title="有收入" />}
                       {hasExpense && <span className="calendar-marker expense" title="有支出" />}
                     </div>
-                    {enabledPlugins.length > 0 && (
-                      <div className="calendar-day-plugin">
-                        {pluginManager.renderDay({
-                          date: d,
-                          isCurrentMonth,
-                          isToday
-                        }).map((result, idx) => (
-                          <div 
-                            key={idx} 
-                            className={`plugin-badge ${result.className || ''}`}
-                            title={result.tooltip || ''}
-                          >
-                            {result.content || result.badge}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-                {!isCurrentMonth && enabledPlugins.length > 0 && (
+                  )}
+                </div>
+                {enabledPlugins.length > 0 && (
                   <div className="calendar-day-plugin">
                     {pluginManager.renderDay({
                       date: d,
