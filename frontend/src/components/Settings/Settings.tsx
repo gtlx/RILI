@@ -35,6 +35,12 @@ export const Settings: React.FC = () => {
   const [initialBalance, setInitialBalance] = useState('0');
   const [balanceStatus, setBalanceStatus] = useState('');
 
+  const [recurringRules, setRecurringRules] = useState<import('../../api/backend').RecurringRule[]>([]);
+  const [showRecurringForm, setShowRecurringForm] = useState(false);
+  const [recurForm, setRecurForm] = useState({ start_date: '', amount: '', transaction_type: 'expense' as 'expense' | 'income', category: '', note: '', interval: 'monthly' as string, interval_value: 1, end_date: '' });
+  const [recurStatus, setRecurStatus] = useState('');
+  const [generating, setGenerating] = useState(false);
+
   const togglePlugin = (name: string) => {
     const plugin = pluginManager.getPlugin(name);
     if (plugin) {
@@ -46,6 +52,7 @@ export const Settings: React.FC = () => {
   useEffect(() => {
     loadLastSyncTime();
     loadInitialBalance();
+    loadRecurringRules();
   }, [loadLastSyncTime]);
 
   const loadInitialBalance = async () => {
@@ -186,6 +193,59 @@ export const Settings: React.FC = () => {
     }
     
     e.target.value = '';
+  };
+
+  const loadRecurringRules = async () => {
+    try {
+      const rules = await backend.getRecurringRules();
+      setRecurringRules(rules);
+    } catch { /* ignore */ }
+  };
+
+  const handleAddRecurringRule = async () => {
+    try {
+      await backend.addRecurringRule({
+        start_date: recurForm.start_date,
+        amount: parseFloat(recurForm.amount),
+        transaction_type: recurForm.transaction_type,
+        category: recurForm.category,
+        note: recurForm.note || undefined,
+        interval: recurForm.interval as 'daily' | 'weekly' | 'monthly' | 'yearly',
+        interval_value: recurForm.interval_value,
+        end_date: recurForm.end_date || undefined,
+        is_active: true,
+      });
+      setRecurStatus('规则已添加');
+      setShowRecurringForm(false);
+      setRecurForm({ start_date: '', amount: '', transaction_type: 'expense', category: '', note: '', interval: 'monthly', interval_value: 1, end_date: '' });
+      setTimeout(() => setRecurStatus(''), 3000);
+      loadRecurringRules();
+    } catch (e) {
+      setRecurStatus('添加失败: ' + String(e));
+    }
+  };
+
+  const handleDeleteRecurringRule = async (id: number) => {
+    try {
+      await backend.deleteRecurringRule(id);
+      loadRecurringRules();
+    } catch (e) {
+      setRecurStatus('删除失败: ' + String(e));
+    }
+  };
+
+  const handleGenerateRecurring = async () => {
+    setGenerating(true);
+    setRecurStatus('正在生成周期交易...');
+    try {
+      const count = await backend.generateRecurringTransactions(new Date().toISOString().split('T')[0]);
+      setRecurStatus(`已生成 ${count} 条周期交易`);
+      setTimeout(() => setRecurStatus(''), 3000);
+    } catch (e) {
+      setRecurStatus('生成失败: ' + String(e));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -519,6 +579,133 @@ export const Settings: React.FC = () => {
               {importStatus}
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-header">周期交易</div>
+        <div className="settings-section-body">
+          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+            设置周期发生的收入/支出规则，可一键生成指定日期范围内的交易记录
+          </p>
+
+          {recurStatus && (
+            <div style={{
+              padding: '8px 12px', borderRadius: '6px', marginBottom: '12px',
+              background: recurStatus.includes('失败') ? '#FEE2E2' : '#D1FAE5',
+              color: recurStatus.includes('失败') ? '#EF4444' : '#10B981',
+              fontSize: '13px'
+            }}>
+              {recurStatus}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <button className="btn btn-primary" onClick={() => setShowRecurringForm(true)}>
+              + 添加规则
+            </button>
+            <button className="btn btn-secondary" onClick={handleGenerateRecurring} disabled={generating}>
+              {generating ? '生成中...' : '生成周期交易'}
+            </button>
+          </div>
+
+          {showRecurringForm && (
+            <div style={{
+              border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px',
+              marginBottom: '16px', background: 'var(--bg-primary)'
+            }}>
+              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '12px' }}>新周期规则</div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">开始日期</label>
+                  <input type="date" className="input" value={recurForm.start_date}
+                    onChange={e => setRecurForm(f => ({ ...f, start_date: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">金额</label>
+                  <input type="number" className="input" step="0.01" value={recurForm.amount}
+                    onChange={e => setRecurForm(f => ({ ...f, amount: e.target.value }))} />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">类型</label>
+                  <select className="input" value={recurForm.transaction_type}
+                    onChange={e => setRecurForm(f => ({ ...f, transaction_type: e.target.value as 'expense' | 'income' }))}>
+                    <option value="expense">支出</option>
+                    <option value="income">收入</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">分类</label>
+                  <input type="text" className="input" value={recurForm.category}
+                    onChange={e => setRecurForm(f => ({ ...f, category: e.target.value }))} placeholder="如: 餐饮" />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">备注</label>
+                <input type="text" className="input" value={recurForm.note}
+                  onChange={e => setRecurForm(f => ({ ...f, note: e.target.value }))} placeholder="如: 房租" />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">间隔类型</label>
+                  <select className="input" value={recurForm.interval}
+                    onChange={e => setRecurForm(f => ({ ...f, interval: e.target.value }))}>
+                    <option value="daily">每日</option>
+                    <option value="weekly">每周</option>
+                    <option value="monthly">每月</option>
+                    <option value="yearly">每年</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">每</label>
+                  <input type="number" className="input" min="1" value={recurForm.interval_value}
+                    onChange={e => setRecurForm(f => ({ ...f, interval_value: parseInt(e.target.value) || 1 }))} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">结束日期 (可选)</label>
+                <input type="date" className="input" value={recurForm.end_date}
+                  onChange={e => setRecurForm(f => ({ ...f, end_date: e.target.value }))} />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <button className="btn btn-primary" onClick={handleAddRecurringRule}>添加</button>
+                <button className="btn btn-secondary" onClick={() => setShowRecurringForm(false)}>取消</button>
+              </div>
+            </div>
+          )}
+
+          {recurringRules.length === 0 && !showRecurringForm && (
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', padding: '24px' }}>
+              暂无周期规则，点击上方按钮添加
+            </p>
+          )}
+
+          {recurringRules.map(rule => (
+            <div key={rule.id} style={{
+              border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px',
+              marginBottom: '8px', background: 'var(--bg-primary)', display: 'flex',
+              justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: rule.transaction_type === 'expense' ? '#EF4444' : '#10B981' }}>
+                  {rule.transaction_type === 'expense' ? '支出' : '收入'} ¥{rule.amount.toFixed(2)}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {rule.category && <span>{rule.category} · </span>}
+                  {rule.note}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  每{rule.interval_value > 1 ? rule.interval_value : ''}{{ daily: '天', weekly: '周', monthly: '月', yearly: '年' }[rule.interval] || rule.interval}
+                  {' · 从 '}{rule.start_date}
+                  {rule.end_date ? ` 至 ${rule.end_date}` : ' (无截止)'}
+                </div>
+              </div>
+              <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 8px', color: '#EF4444' }}
+                onClick={() => rule.id && handleDeleteRecurringRule(rule.id)}>删除</button>
+            </div>
+          ))}
         </div>
       </div>
 

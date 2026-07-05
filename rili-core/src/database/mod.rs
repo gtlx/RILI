@@ -1,6 +1,7 @@
 pub mod analysis_repo;
 pub mod category_repo;
 pub mod note_repo;
+pub mod recurring_repo;
 pub mod settings_repo;
 pub mod sync_repo;
 pub mod transaction_repo;
@@ -38,6 +39,8 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         let sql = include_str!("../../migrations/001_init.sql");
         conn.execute_batch(sql)?;
+        let sql2 = include_str!("../../migrations/002_recurring.sql");
+        conn.execute_batch(sql2)?;
         Ok(())
     }
 

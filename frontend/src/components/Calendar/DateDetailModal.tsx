@@ -2,43 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAppStore } from '../../stores/appStore';
+import lunarCalendar from 'lunar-calendar';
 
 interface DateDetailModalProps {
   date: Date;
   onClose: () => void;
 }
 
+const LUNAR_MONTH_NAMES = ['', '正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'];
+const LUNAR_DAY_NAMES = ['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
+  '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
+  '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
+const ZODIAC_NAMES = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
+const WEEKDAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+const HOLIDAYS: Record<string, string> = {
+  '01-01': '元旦', '02-14': '情人节', '03-08': '妇女节', '03-12': '植树节',
+  '04-01': '愚人节', '05-01': '劳动节', '05-04': '青年节', '06-01': '儿童节',
+  '07-01': '建党节', '08-01': '建军节', '09-10': '教师节', '10-01': '国庆节', '12-25': '圣诞节',
+};
+
 export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'transactions' | 'notes'>('all');
-  const { 
-    transactions, 
-    notes, 
-    categories,
-    loadCategories,
-    addTransaction,
-    deleteTransaction,
-    loadNote,
-    saveNote,
-    currentNoteContent,
-    deleteNote,
-    loadNotes
-  } = useAppStore();
-  
+  const [activeTab, setActiveTab] = useState<'overview' | 'accounting' | 'notes'>('overview');
+  const { notes, loadNote, saveNote, currentNoteContent, deleteNote, loadNotes, transactions } = useAppStore();
   const [showNoteEditor, setShowNoteEditor] = useState(false);
-  const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
-  const [note, setNote] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [showNewCategory, setShowNewCategory] = useState(false);
 
   const dateStr = format(date, 'yyyy-MM-dd');
-  const dayTransactions = transactions.filter(t => t.date === dateStr);
   const dayNote = notes.find(n => n.date === dateStr);
-
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
 
   useEffect(() => {
     if (dayNote) {
@@ -46,55 +36,34 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     }
   }, [dayNote, dateStr, loadNote]);
 
-  const handleSaveTransaction = async () => {
-    const numAmount = parseFloat(amount);
-    if (!numAmount || numAmount <= 0 || !category) {
-      alert('请输入有效的金额和分类');
-      return;
+  useEffect(() => {
+    if (activeTab === 'notes') {
+      loadNote(dateStr);
     }
-    
-    try {
-      await addTransaction({
-        date: dateStr,
-        amount: numAmount,
-        transaction_type: transactionType,
-        category: category,
-        note: note || undefined,
-        version: 1,
-        is_deleted: false,
-      });
-      setAmount('');
-      setCategory('');
-      setNote('');
-      setActiveTab('all');
-      // 立即重新加载当月交易，确保弹窗显示新记录
-      const { loadTransactions, selectedDate } = useAppStore.getState();
-      const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-      const end = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-      await loadTransactions(
-        start.toISOString().split('T')[0],
-        end.toISOString().split('T')[0]
-      );
-    } catch (e) {
-      alert('保存失败: ' + String(e));
-    }
-  };
+  }, [activeTab, dateStr, loadNote]);
 
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    
-    await useAppStore.getState().addCategory({
-      name: newCategoryName.trim(),
-      category_type: transactionType,
-      icon: 'tag',
-      color: '#6B7280',
-      is_default: false,
-    });
-    
-    setNewCategoryName('');
-    setShowNewCategory(false);
-    setCategory(newCategoryName.trim());
-  };
+  const lunar = (() => {
+    try {
+      const l = lunarCalendar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate()) as any;
+      if (!l) return null;
+      const monthIdx = l.lunarMonthName ? LUNAR_MONTH_NAMES.indexOf(l.lunarMonthName) + 1 : l.lunarMonth;
+      const lunarMonthName = l.lunarLeapMonth > 0 ? '闰' + LUNAR_MONTH_NAMES[monthIdx] : LUNAR_MONTH_NAMES[monthIdx] || '';
+      const lunarDayName = LUNAR_DAY_NAMES[l.lunarDay - 1] || '';
+      return {
+        lunarMonthName,
+        lunarDayName,
+        zodiac: ZODIAC_NAMES[(l.lunarYear - 4) % 12] || '',
+        solarTerm: l.term || '',
+        yearName: `${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][Math.floor(l.lunarYear / 1000)]}${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][Math.floor((l.lunarYear % 1000) / 100)]}${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][Math.floor((l.lunarYear % 100) / 10)]}${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][l.lunarYear % 10]}`,
+      };
+    } catch { return null; }
+  })();
+
+  const holiday = HOLIDAYS[format(date, 'MM-dd')] || null;
+
+  const dayTransactions = transactions.filter(t => t.date === dateStr);
+  const dayIncome = dayTransactions.filter(t => t.transaction_type === 'income').reduce((s, t) => s + t.amount, 0);
+  const dayExpense = dayTransactions.filter(t => t.transaction_type === 'expense').reduce((s, t) => s + t.amount, 0);
 
   const handleSaveNote = async () => {
     await saveNote(dateStr, currentNoteContent);
@@ -110,22 +79,6 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     }
   };
 
-  const handleDeleteTransaction = async (id: number) => {
-    if (confirm('确定删除这条记录吗？')) {
-      await deleteTransaction(id);
-    }
-  };
-
-  const totalIncome = dayTransactions
-    .filter(t => t.transaction_type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const totalExpense = dayTransactions
-    .filter(t => t.transaction_type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const currentCategories = transactionType === 'expense' ? categories.expense : categories.income;
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
@@ -137,131 +90,70 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
             </svg>
           </button>
         </div>
-        
+
         <div className="tabs" style={{ padding: '0 16px' }}>
-          <div className={`tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>概览</div>
-          <div className={`tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>记账</div>
+          <div className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>概览</div>
+          <div className={`tab ${activeTab === 'accounting' ? 'active' : ''}`} onClick={() => setActiveTab('accounting')}>记账</div>
           <div className={`tab ${activeTab === 'notes' ? 'active' : ''}`} onClick={() => setActiveTab('notes')}>笔记</div>
         </div>
-        
+
         <div className="modal-body">
-          {activeTab === 'all' && (
+          {activeTab === 'overview' && (
             <div>
-              <div className="stats-summary">
-                <div className="stat-item">
-                  <div className="stat-icon income">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                      <path d="M12 19V5M5 12l7-7 7 7" />
-                    </svg>
-                  </div>
-                  <div className="stat-content">
-                    <div className="stat-label">收入</div>
-                    <div className="stat-value" style={{ color: '#10B981' }}>+{totalIncome.toFixed(2)}</div>
-                  </div>
+              <div className="date-info-card">
+                <div className="date-info-row">
+                  <span className="date-info-label">星期</span>
+                  <span className="date-info-value">{WEEKDAY_NAMES[date.getDay()]}</span>
                 </div>
-                <div className="stat-item">
-                  <div className="stat-icon expense">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
-                      <path d="M12 5v14M5 12l7 7 7-7" />
-                    </svg>
+                {lunar && (
+                  <>
+                    <div className="date-info-row">
+                      <span className="date-info-label">农历</span>
+                      <span className="date-info-value">{lunar.lunarMonthName} {lunar.lunarDayName}</span>
+                    </div>
+                    <div className="date-info-row">
+                      <span className="date-info-label">干支</span>
+                      <span className="date-info-value">{lunar.yearName}年 生肖{lunar.zodiac}</span>
+                    </div>
+                  </>
+                )}
+                {lunar?.solarTerm && (
+                  <div className="date-info-row">
+                    <span className="date-info-label">节气</span>
+                    <span className="date-info-value solar-term">{lunar.solarTerm}</span>
                   </div>
-                  <div className="stat-content">
-                    <div className="stat-label">支出</div>
-                    <div className="stat-value" style={{ color: '#EF4444' }}>-{totalExpense.toFixed(2)}</div>
+                )}
+                {holiday && (
+                  <div className="date-info-row">
+                    <span className="date-info-label">节日</span>
+                    <span className="date-info-value holiday">{holiday}</span>
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'accounting' && (
+            <div>
+              <div className="date-info-card">
+                <div className="date-info-row">
+                  <span className="date-info-label">收入</span>
+                  <span className="date-info-value" style={{ color: '#10B981' }}>+{dayIncome.toFixed(2)}</span>
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                <button 
-                  className={`btn ${transactionType === 'expense' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => { setTransactionType('expense'); setCategory(''); }}
-                  style={{ flex: 1 }}
-                >
-                  支出
-                </button>
-                <button 
-                  className={`btn ${transactionType === 'income' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => { setTransactionType('income'); setCategory(''); }}
-                  style={{ flex: 1 }}
-                >
-                  收入
-                </button>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">金额</label>
-                <input
-                  type="number"
-                  className="input"
-                  style={{ width: '100%' }}
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">分类</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select
-                    className="select"
-                    style={{ flex: 1 }}
-                    value={category}
-                    onChange={e => setCategory(e.target.value)}
-                  >
-                    <option value="">选择分类</option>
-                    {currentCategories.map(cat => (
-                      <option key={cat.name} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
-                  <button 
-                    className="btn btn-secondary" 
-                    onClick={() => setShowNewCategory(true)}
-                  >
-                    +
-                  </button>
+                <div className="date-info-row">
+                  <span className="date-info-label">支出</span>
+                  <span className="date-info-value" style={{ color: '#EF4444' }}>-{dayExpense.toFixed(2)}</span>
+                </div>
+                <div className="date-info-row">
+                  <span className="date-info-label">结余</span>
+                  <span className="date-info-value" style={{ color: dayIncome - dayExpense >= 0 ? '#10B981' : '#EF4444' }}>
+                    {(dayIncome - dayExpense).toFixed(2)}
+                  </span>
                 </div>
               </div>
-
-              {showNewCategory && (
-                <div className="form-group">
-                  <label className="form-label">新增分类</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      className="input"
-                      style={{ flex: 1 }}
-                      value={newCategoryName}
-                      onChange={e => setNewCategoryName(e.target.value)}
-                      placeholder="分类名称"
-                      onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
-                    />
-                    <button className="btn btn-primary" onClick={handleAddCategory}>添加</button>
-                    <button className="btn btn-secondary" onClick={() => setShowNewCategory(false)}>取消</button>
-                  </div>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label className="form-label">备注 (可选)</label>
-                <input
-                  type="text"
-                  className="input"
-                  style={{ width: '100%' }}
-                  value={note}
-                  onChange={e => setNote(e.target.value)}
-                  placeholder="备注"
-                />
-              </div>
-
-              <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveTransaction}>
-                保存
-              </button>
 
               {dayTransactions.length > 0 && (
-                <div style={{ marginTop: '24px' }}>
-                  <div className="card-title" style={{ marginBottom: '12px' }}>今日记录</div>
+                <div style={{ marginTop: '16px' }}>
                   {dayTransactions.map(t => (
                     <div key={t.id} className="transaction-item" style={{ marginBottom: '8px' }}>
                       <div className={`transaction-icon ${t.transaction_type}`}>
@@ -274,61 +166,28 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
                       <div className={`transaction-amount ${t.transaction_type}`}>
                         {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
                       </div>
-                      <button 
-                        className="btn btn-icon btn-sm" 
-                        style={{ marginLeft: '8px', color: '#EF4444' }}
-                        onClick={() => handleDeleteTransaction(t.id!)}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </button>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
-          )}
-          
-          {activeTab === 'transactions' && (
-            <div>
-              {dayTransactions.length === 0 ? (
-                <div className="empty-state">
-                  <p>暂无记账记录</p>
-                  <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => setActiveTab('all')}>
-                    添加记录
-                  </button>
-                </div>
-              ) : (
-                <div className="transaction-list">
-                  {dayTransactions.map(t => (
-                    <div key={t.id} className="transaction-item">
-                      <div className={`transaction-icon ${t.transaction_type}`}>
-                        <span style={{ fontSize: '12px' }}>{t.transaction_type === 'income' ? '↑' : '↓'}</span>
-                      </div>
-                      <div className="transaction-details">
-                        <div className="transaction-category">{t.category}</div>
-                        {t.note && <div className="transaction-note">{t.note}</div>}
-                      </div>
-                      <div className={`transaction-amount ${t.transaction_type}`}>
-                        {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
-                      </div>
-                      <button 
-                        className="btn btn-icon btn-sm" 
-                        style={{ marginLeft: '8px', color: '#EF4444' }}
-                        onClick={() => handleDeleteTransaction(t.id!)}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
+
+              {dayTransactions.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  暂无记账记录
                 </div>
               )}
+
+              <div style={{ marginTop: '16px' }}>
+                <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => {
+                  onClose();
+                  useAppStore.getState().setDetailDate(dateStr);
+                }}>
+                  添加记录
+                </button>
+              </div>
             </div>
           )}
-          
+
           {activeTab === 'notes' && (
             <div>
               {showNoteEditor ? (

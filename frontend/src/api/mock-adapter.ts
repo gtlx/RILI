@@ -1,7 +1,8 @@
-import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata } from './backend';
+import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule } from './backend';
 
 export class MockBackend implements BackendAdapter {
   private txns: Transaction[] = [];
+  private recurringRules: RecurringRule[] = [];
   private notes: Map<string, string> = new Map();
   private noteMeta: Note[] = [];
   private categories: Category[] = [
@@ -114,6 +115,35 @@ export class MockBackend implements BackendAdapter {
   // ── 笔记: ZIP ──
   async exportNotesZip(): Promise<string> { return ''; }
   async importNotesZip(b: string): Promise<number> { return 0; }
+
+  // ── 周期交易 ──
+  async addRecurringRule(r: RecurringRule): Promise<number> { this.recurringRules.push({ ...r, id: this.recurringRules.length + 1 }); return this.recurringRules.length; }
+  async updateRecurringRule(r: RecurringRule): Promise<void> { const idx = this.recurringRules.findIndex(x => x.id === r.id); if (idx >= 0) this.recurringRules[idx] = r; }
+  async deleteRecurringRule(id: number): Promise<void> { this.recurringRules = this.recurringRules.filter(x => x.id !== id); }
+  async getRecurringRules(): Promise<RecurringRule[]> { return this.recurringRules.filter(r => r.is_active); }
+  async generateRecurringTransactions(endDate: string): Promise<number> {
+    let count = 0;
+    for (const rule of this.recurringRules) {
+      if (!rule.is_active) continue;
+      let current = new Date(rule.start_date);
+      const end = new Date(endDate);
+      while (current <= end) {
+        if (rule.end_date && current > new Date(rule.end_date)) break;
+        if (current.toISOString().split('T')[0] !== rule.start_date) {
+          const dateStr = current.toISOString().split('T')[0];
+          if (!this.txns.some(t => t.date === dateStr && t.amount === rule.amount && t.category === rule.category)) {
+            this.txns.push({ date: dateStr, amount: rule.amount, transaction_type: rule.transaction_type, category: rule.category, note: rule.note, version: 1, is_deleted: false, id: this.txns.length + 1 });
+            count++;
+          }
+        }
+        if (rule.interval === 'daily') current.setDate(current.getDate() + rule.interval_value);
+        else if (rule.interval === 'weekly') current.setDate(current.getDate() + 7 * rule.interval_value);
+        else if (rule.interval === 'monthly') current.setMonth(current.getMonth() + rule.interval_value);
+        else if (rule.interval === 'yearly') current.setFullYear(current.getFullYear() + rule.interval_value);
+      }
+    }
+    return count;
+  }
 
   async saveFileDialog(content: string, filename: string, mimeType: string): Promise<void> {
     // 浏览器模式：触发下载

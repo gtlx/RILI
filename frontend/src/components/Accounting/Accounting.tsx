@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format, getWeek } from 'date-fns';
+import { format, getWeek, eachDayOfInterval } from 'date-fns';
 import { useAppStore, MonthlyAnalysis, WeeklyAnalysis } from '../../stores/appStore';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { invoke } from '@tauri-apps/api/core';
+import { backend } from '../../api';
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6B7280', '#3B82F6', '#6366F1'];
 
@@ -14,14 +15,18 @@ interface YearMonthData {
 }
 
 export const Accounting: React.FC = () => {
-  const [view, setView] = useState<'week' | 'month' | 'year'>('month');
-  const [selectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth] = useState(new Date().getMonth() + 1);
+  const [view, setView] = useState<'week' | 'month' | 'year' | 'records'>('month');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedWeek] = useState(getWeek(new Date()));
   const [yearData, setYearData] = useState<YearMonthData[]>([]);
   const [initialBalance, setInitialBalance] = useState(0);
-  
-  const { loadTransactions, loadCategories, weeklyAnalysis, monthlyAnalysis, loadWeeklyAnalysis, loadMonthlyAnalysis } = useAppStore();
+
+  const {
+    loadTransactions, weeklyAnalysis, monthlyAnalysis,
+    loadWeeklyAnalysis, loadMonthlyAnalysis,
+    transactions, setDetailDate,
+  } = useAppStore();
 
   const loadInitialBalance = async () => {
     try {
@@ -33,26 +38,22 @@ export const Accounting: React.FC = () => {
   };
 
   useEffect(() => {
-    loadCategories();
     loadInitialBalance();
-    const date = new Date(selectedYear, selectedMonth - 1, 1);
-    const start = new Date(date.getFullYear(), date.getMonth(), 1);
-    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    loadTransactions(format(start, 'yyyy-MM-dd'), format(end, 'yyyy-MM-dd'));
-  }, [selectedYear, selectedMonth, loadTransactions, loadCategories]);
+  }, []);
 
   useEffect(() => {
-    if (view === 'week') {
-      loadWeeklyAnalysis(selectedYear, selectedWeek);
-    } else if (view === 'month') {
-      loadMonthlyAnalysis(selectedYear, selectedMonth);
-    }
+    const start = format(new Date(selectedYear, selectedMonth - 1, 1), 'yyyy-MM-dd');
+    const end = format(new Date(selectedYear, selectedMonth, 0), 'yyyy-MM-dd');
+    loadTransactions(start, end);
+  }, [selectedYear, selectedMonth, loadTransactions]);
+
+  useEffect(() => {
+    if (view === 'week') loadWeeklyAnalysis(selectedYear, selectedWeek);
+    else if (view === 'month') loadMonthlyAnalysis(selectedYear, selectedMonth);
   }, [view, selectedYear, selectedMonth, selectedWeek, loadWeeklyAnalysis, loadMonthlyAnalysis]);
 
   useEffect(() => {
-    if (view === 'year') {
-      loadYearData();
-    }
+    if (view === 'year') loadYearData();
   }, [view, selectedYear]);
 
   const loadYearData = async () => {
@@ -60,12 +61,7 @@ export const Accounting: React.FC = () => {
     for (let m = 1; m <= 12; m++) {
       try {
         const analysis = await invoke<MonthlyAnalysis>('get_monthly_analysis', { year: selectedYear, month: m });
-        months.push({
-          month: m,
-          income: analysis.total_income,
-          expense: analysis.total_expense,
-          balance: analysis.total_income - analysis.total_expense
-        });
+        months.push({ month: m, income: analysis.total_income, expense: analysis.total_expense, balance: analysis.total_income - analysis.total_expense });
       } catch {
         months.push({ month: m, income: 0, expense: 0, balance: 0 });
       }
@@ -73,77 +69,60 @@ export const Accounting: React.FC = () => {
     setYearData(months);
   };
 
-  const yearChartData = useMemo(() => {
-    return yearData.map(d => ({
-      name: `${d.month}月`,
-      income: d.income,
-      expense: d.expense,
-      balance: d.balance
-    }));
-  }, [yearData]);
-
-  const yearTotalIncome = useMemo(() => yearData.reduce((sum, d) => sum + d.income, 0), [yearData]);
-  const yearTotalExpense = useMemo(() => yearData.reduce((sum, d) => sum + d.expense, 0), [yearData]);
+  const yearChartData = useMemo(() => yearData.map(d => ({ name: `${d.month}月`, income: d.income, expense: d.expense, balance: d.balance })), [yearData]);
+  const yearTotalIncome = useMemo(() => yearData.reduce((s, d) => s + d.income, 0), [yearData]);
+  const yearTotalExpense = useMemo(() => yearData.reduce((s, d) => s + d.expense, 0), [yearData]);
 
   const getTitle = () => {
     if (view === 'year') return `${selectedYear}年分析`;
     if (view === 'month') return `${selectedYear}年${selectedMonth}月分析`;
+    if (view === 'records') return `${selectedYear}年${selectedMonth}月记录`;
     return `${selectedYear}年第${selectedWeek}周分析`;
   };
 
   const isWeekly = view === 'week';
-
   const chartData = useMemo(() => {
     let expensePieData: { name: string; value: number; color: string }[] = [];
     let incomePieData: { name: string; value: number; color: string }[] = [];
     let dailyExpenseData: { date: string; amount: number }[] = [];
     let comparePercent = 0;
     let topCategories: { category: string; amount: number }[] = [];
-
     if (isWeekly && weeklyAnalysis) {
       const wa = weeklyAnalysis as WeeklyAnalysis;
-      expensePieData = wa.expense_by_category.map((item: { category: string; amount: number }, index: number) => ({
-        name: item.category,
-        value: item.amount,
-        color: COLORS[index % COLORS.length]
-      }));
-      incomePieData = wa.income_by_category.map((item: { category: string; amount: number }, index: number) => ({
-        name: item.category,
-        value: item.amount,
-        color: COLORS[index % COLORS.length]
-      }));
-      dailyExpenseData = wa.daily_expense.map((item: { date: string; amount: number }) => ({
-        date: format(new Date(item.date), 'M/d'),
-        amount: item.amount
-      }));
+      expensePieData = wa.expense_by_category.map((item, i) => ({ name: item.category, value: item.amount, color: COLORS[i % COLORS.length] }));
+      incomePieData = wa.income_by_category.map((item, i) => ({ name: item.category, value: item.amount, color: COLORS[i % COLORS.length] }));
+      dailyExpenseData = wa.daily_expense.map(item => ({ date: format(new Date(item.date), 'M/d'), amount: item.amount }));
       comparePercent = wa.compare_to_last_week;
     } else if (!isWeekly && monthlyAnalysis) {
       const ma = monthlyAnalysis as MonthlyAnalysis;
-      expensePieData = ma.expense_by_category.map((item: { category: string; amount: number }, index: number) => ({
-        name: item.category,
-        value: item.amount,
-        color: COLORS[index % COLORS.length]
-      }));
-      incomePieData = ma.income_by_category.map((item: { category: string; amount: number }, index: number) => ({
-        name: item.category,
-        value: item.amount,
-        color: COLORS[index % COLORS.length]
-      }));
+      expensePieData = ma.expense_by_category.map((item, i) => ({ name: item.category, value: item.amount, color: COLORS[i % COLORS.length] }));
+      incomePieData = ma.income_by_category.map((item, i) => ({ name: item.category, value: item.amount, color: COLORS[i % COLORS.length] }));
       comparePercent = ma.compare_to_last_month;
       topCategories = ma.top_categories || [];
     }
-
     return { expensePieData, incomePieData, dailyExpenseData, comparePercent, topCategories };
   }, [isWeekly, weeklyAnalysis, monthlyAnalysis]);
 
-  const totalIncome = isWeekly 
-    ? (weeklyAnalysis as WeeklyAnalysis)?.total_income || 0 
-    : (monthlyAnalysis as MonthlyAnalysis)?.total_income || 0;
-  const totalExpense = isWeekly 
-    ? (weeklyAnalysis as WeeklyAnalysis)?.total_expense || 0 
-    : (monthlyAnalysis as MonthlyAnalysis)?.total_expense || 0;
+  const totalIncome = isWeekly ? (weeklyAnalysis as WeeklyAnalysis)?.total_income || 0 : (monthlyAnalysis as MonthlyAnalysis)?.total_income || 0;
+  const totalExpense = isWeekly ? (weeklyAnalysis as WeeklyAnalysis)?.total_expense || 0 : (monthlyAnalysis as MonthlyAnalysis)?.total_expense || 0;
 
-  if (view !== 'year' && !weeklyAnalysis && !monthlyAnalysis) {
+  const daysInMonth = useMemo(() => {
+    const start = new Date(selectedYear, selectedMonth - 1, 1);
+    const end = new Date(selectedYear, selectedMonth, 0);
+    return eachDayOfInterval({ start, end });
+  }, [selectedYear, selectedMonth]);
+
+  const transactionIndex = useMemo(() => {
+    const idx = new Map<string, typeof transactions>();
+    transactions.forEach(t => {
+      const arr = idx.get(t.date) || [];
+      arr.push(t);
+      idx.set(t.date, arr);
+    });
+    return idx;
+  }, [transactions]);
+
+  if (view !== 'year' && view !== 'records' && !weeklyAnalysis && !monthlyAnalysis) {
     return <div className="loading"><div className="spinner"></div></div>;
   }
 
@@ -152,20 +131,63 @@ export const Accounting: React.FC = () => {
       <div className="calendar" style={{ marginBottom: '24px' }}>
         <div className="calendar-header">
           <div className="calendar-nav">
-            <button className={`btn btn-sm ${view === 'year' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('year')}>
-              年
-            </button>
-            <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>
-              月
-            </button>
-            <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>
-              周
-            </button>
+            <button className={`btn btn-sm ${view === 'year' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('year')}>年</button>
+            <button className={`btn btn-sm ${view === 'month' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('month')}>月</button>
+            <button className={`btn btn-sm ${view === 'week' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('week')}>周</button>
+            <button className={`btn btn-sm ${view === 'records' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setView('records')}>记录</button>
           </div>
           <div className="calendar-title">{getTitle()}</div>
           <div style={{ width: '60px' }}></div>
         </div>
       </div>
+
+      {view === 'records' && (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px' }}>
+            <select className="select" value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} style={{ width: 'auto' }}>
+              {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(y => (
+                <option key={y} value={y}>{y}年</option>
+              ))}
+            </select>
+            <select className="select" value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))} style={{ width: 'auto' }}>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <option key={m} value={m}>{m}月</option>
+              ))}
+            </select>
+            <button className="btn btn-sm btn-secondary" onClick={async () => {
+              try {
+                const endDate = format(new Date(selectedYear, selectedMonth, 0), 'yyyy-MM-dd');
+                await backend.generateRecurringTransactions(endDate);
+                const start = format(new Date(selectedYear, selectedMonth - 1, 1), 'yyyy-MM-dd');
+                await loadTransactions(start, endDate);
+              } catch { /* ignore */ }
+            }}>同步周期</button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+            {daysInMonth.map(d => {
+              const dateStr = format(d, 'yyyy-MM-dd');
+              const txns = transactionIndex.get(dateStr) || [];
+              const hasIncome = txns.some(t => t.transaction_type === 'income');
+              const hasExpense = txns.some(t => t.transaction_type === 'expense');
+              return (
+                <div
+                  key={dateStr}
+                  className="calendar-day"
+                  onClick={() => setDetailDate(dateStr)}
+                  style={{ padding: '6px 2px', cursor: 'pointer', textAlign: 'center', fontSize: '12px', borderRadius: 'var(--radius)' }}
+                >
+                  <div style={{ fontWeight: 400, color: 'var(--text-primary)' }}>{format(d, 'd')}</div>
+                  <div className="calendar-day-markers" style={{ justifyContent: 'center' }}>
+                    {hasIncome && <span className="calendar-marker income" />}
+                    {hasExpense && <span className="calendar-marker expense" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {view === 'year' && (
         <>
@@ -185,7 +207,6 @@ export const Accounting: React.FC = () => {
               </div>
             </div>
           </div>
-          
           <div className="chart-container">
             <div className="chart-title">{selectedYear}年月度收支对比</div>
             <ResponsiveContainer width="100%" height={300}>
@@ -199,7 +220,6 @@ export const Accounting: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          
           <div className="chart-container">
             <div className="chart-title">月度结余趋势</div>
             <ResponsiveContainer width="100%" height={250}>
@@ -212,7 +232,6 @@ export const Accounting: React.FC = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          
           <div className="chart-container">
             <div className="chart-title">月度明细</div>
             <div style={{ overflowX: 'auto' }}>
@@ -245,6 +264,11 @@ export const Accounting: React.FC = () => {
 
       {view === 'month' && (
         <>
+          <div style={{ textAlign: 'right', marginBottom: '12px' }}>
+            <button className="btn btn-primary btn-sm" onClick={() => setDetailDate(format(new Date(), 'yyyy-MM-dd'))}>
+              + 添加本日记账
+            </button>
+          </div>
           <div className="analysis-cards">
             <div className="analysis-card">
               <div className="analysis-card-label">收入</div>
@@ -277,55 +301,28 @@ export const Accounting: React.FC = () => {
               {chartData.expensePieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
-                    <Pie
-                      data={chartData.expensePieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {chartData.expensePieData.map((entry: { color: string }, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                    <Pie data={chartData.expensePieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value"
+                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                      {chartData.expensePieData.map((entry: { color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                     </Pie>
                     <Tooltip formatter={(value: number) => `¥${value.toFixed(2)}`} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="empty-state">暂无数据</div>
-              )}
+              ) : (<div className="empty-state">暂无数据</div>)}
             </div>
-
             <div className="chart-container">
               <div className="chart-title">收入分类</div>
               {chartData.incomePieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
-                    <Pie
-                      data={chartData.incomePieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {chartData.incomePieData.map((entry: { color: string }, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                    <Pie data={chartData.incomePieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value"
+                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                      {chartData.incomePieData.map((entry: { color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                     </Pie>
                     <Tooltip formatter={(value: number) => `¥${value.toFixed(2)}`} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="empty-state">暂无数据</div>
-              )}
+              ) : (<div className="empty-state">暂无数据</div>)}
             </div>
           </div>
 
@@ -355,6 +352,11 @@ export const Accounting: React.FC = () => {
 
       {view === 'week' && (
         <>
+          <div style={{ textAlign: 'right', marginBottom: '12px' }}>
+            <button className="btn btn-primary btn-sm" onClick={() => setDetailDate(format(new Date(), 'yyyy-MM-dd'))}>
+              + 添加本日记账
+            </button>
+          </div>
           <div className="analysis-cards">
             <div className="analysis-card">
               <div className="analysis-card-label">收入</div>
@@ -396,55 +398,28 @@ export const Accounting: React.FC = () => {
               {chartData.expensePieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
-                    <Pie
-                      data={chartData.expensePieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {chartData.expensePieData.map((entry: { color: string }, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                    <Pie data={chartData.expensePieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value"
+                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                      {chartData.expensePieData.map((entry: { color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                     </Pie>
                     <Tooltip formatter={(value: number) => `¥${value.toFixed(2)}`} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="empty-state">暂无数据</div>
-              )}
+              ) : (<div className="empty-state">暂无数据</div>)}
             </div>
-
             <div className="chart-container">
               <div className="chart-title">收入分类</div>
               {chartData.incomePieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
-                    <Pie
-                      data={chartData.incomePieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={2}
-                      dataKey="value"
-                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {chartData.incomePieData.map((entry: { color: string }, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                    <Pie data={chartData.incomePieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value"
+                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                      {chartData.incomePieData.map((entry: { color: string }, index: number) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                     </Pie>
                     <Tooltip formatter={(value: number) => `¥${value.toFixed(2)}`} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="empty-state">暂无数据</div>
-              )}
+              ) : (<div className="empty-state">暂无数据</div>)}
             </div>
           </div>
         </>

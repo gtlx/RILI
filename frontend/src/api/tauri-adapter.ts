@@ -1,4 +1,4 @@
-import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata } from './backend';
+import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule } from './backend';
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   try {
@@ -52,6 +52,13 @@ export class TauriBackend implements BackendAdapter {
   // ── 笔记: ZIP ──
   async exportNotesZip(): Promise<string> { return invoke('export_notes_zip'); }
   async importNotesZip(b: string): Promise<number> { return invoke('import_notes_zip', { base64Data: b }); }
+
+  // ── 周期交易 ──
+  async addRecurringRule(r: RecurringRule): Promise<number> { return invoke('add_recurring_rule', { rule: r }); }
+  async updateRecurringRule(r: RecurringRule): Promise<void> { return invoke('update_recurring_rule', { rule: r }); }
+  async deleteRecurringRule(id: number): Promise<void> { return invoke('delete_recurring_rule', { id }); }
+  async getRecurringRules(): Promise<RecurringRule[]> { return invoke('get_recurring_rules'); }
+  async generateRecurringTransactions(endDate: string): Promise<number> { return invoke('generate_recurring_transactions', { endDate }); }
 
   async saveFileDialog(content: string, filename: string, _mimeType: string): Promise<void> {
     const { save } = await import('@tauri-apps/plugin-dialog');

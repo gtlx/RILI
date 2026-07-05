@@ -30,8 +30,9 @@ RILI 是一款功能丰富的跨平台桌面应用，结合了日历、记账分
 
 | 功能 | 说明 |
 |------|------|
-| 📅 **日历** | 月/周视图，农历/节气/节日显示，点击日期查看详情 |
-| 💰 **记账** | 收入/支出记录，自定义分类，周/月/年分析图表 |
+| 📅 **日历** | 月/周视图，农历/节气/节日/生肖显示，点击日期查看详情 |
+| 💰 **记账** | 记录子视图（日期网格+添加表单）+ 周/月/年分析图表 |
+| 🔁 **周期交易** | 设置每日/周/月/年规则，一键生成交易记录 |
 | 📝 **笔记** | Markdown 编辑，按日存储为 `.md` 文件 |
 | 🔄 **WebDAV 同步** | 支持 Nextcloud/OwnCloud 全量/增量同步 |
 | 📊 **数据分析** | Recharts 图表：分类占比饼图、每日趋势折线图、月度对比 |
@@ -82,7 +83,7 @@ RILI 是一款功能丰富的跨平台桌面应用，结合了日历、记账分
 
 ### 数据库 (SQLite)
 
-7 张表：`transactions`, `categories`, `notes`, `settings`, `sync_log`, `sync_queue`, `sync_metadata`
+8 张表：`transactions`, `categories`, `notes`, `settings`, `sync_log`, `sync_queue`, `sync_metadata`, `recurring_rules`
 
 ---
 
@@ -115,6 +116,7 @@ RILI 是一款功能丰富的跨平台桌面应用，结合了日历、记账分
 │  │  │  Category    │  │  分析查询    │  │  导出/导入  │  │ │
 │  │  │  Note        │  │  版本控制    │  │  数据校验   │  │ │
 │  │  │  Analysis    │  │  同步队列    │  │             │  │ │
+│  │  │  Recurring   │  │  recurring   │  │             │  │ │
 │  │  └──────────────┘  └──────────────┘  └─────────────┘  │ │
 │  └────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────┘
@@ -206,24 +208,27 @@ rili-rust/
 ├── rili-core/              # ★ Rust 核心库（纯业务逻辑，零框架依赖）
 │   ├── Cargo.toml
 │   ├── migrations/
-│   │   └── 001_init.sql    # 7张表 + 默认数据 + 索引
+│   │   ├── 001_init.sql    # 7张表 + 默认数据 + 索引
+│   │   └── 002_recurring.sql  # recurring_rules 表
 │   └── src/
 │       ├── lib.rs           # App 结构体：统一入口
 │       ├── models/          # 数据结构
 │       │   ├── transaction.rs
 │       │   ├── category.rs
-│       │   ├── note.rs
-│       │   ├── settings.rs
-│       │   ├── analysis.rs  # WeeklyAnalysis, MonthlyAnalysis
-│       │   └── sync.rs      # SyncMetadata, SyncConfig, SyncQueueItem
+│   │   ├── note.rs
+│   │   ├── settings.rs
+│   │   ├── analysis.rs  # WeeklyAnalysis, MonthlyAnalysis
+│   │   ├── sync.rs      # SyncMetadata, SyncConfig, SyncQueueItem
+│   │   └── recurring.rs # RecurringRule
 │       ├── database/        # SQLite CRUD
 │       │   ├── mod.rs       # Database 结构体 + 迁移
 │       │   ├── transaction_repo.rs
 │       │   ├── category_repo.rs
 │       │   ├── note_repo.rs
 │       │   ├── analysis_repo.rs  # 周/月分析查询
-│       │   ├── settings_repo.rs
-│       │   └── sync_repo.rs      # 同步队列 + 元数据
+│   │   ├── settings_repo.rs
+│   │   ├── sync_repo.rs      # 同步队列 + 元数据
+│   │   └── recurring_repo.rs # 周期规则 CRUD + 生成
 │       ├── services/        # 业务服务
 │       │   ├── sync_webdav.rs    # WebDAV 全量/增量同步
 │       │   └── export.rs         # JSON/CSV/ZIP/校验
@@ -239,7 +244,7 @@ rili-rust/
 │   │   └── default.json
 │   └── src/
 │       ├── main.rs          # 入口
-│       ├── lib.rs           # AppState + 27 个命令注册
+│       ├── lib.rs           # AppState + 32 个命令注册
 │       └── commands/        # 薄 IPC 命令层
 │           ├── transactions.rs
 │           ├── categories.rs
@@ -247,11 +252,12 @@ rili-rust/
 │           ├── analysis.rs
 │           ├── settings.rs
 │           ├── sync.rs
-│           └── io.rs        # 导入导出/校验
+│           ├── io.rs        # 导入导出/校验
+│           └── recurring.rs # 周期交易命令
 │
 ├── rili-cli/                # ★ CLI 命令行工具
 │   ├── Cargo.toml
-│   └── src/main.rs          # 11 个子命令
+│   └── src/main.rs          # 子命令
 │
 ├── frontend/                # ★ React 前端（可独立部署）
 │   ├── package.json
@@ -272,10 +278,10 @@ rili-rust/
 │       ├── stores/
 │       │   └── appStore.ts       # Zustand → 通过 backend 调用
 │       └── components/
-│           ├── Calendar/    # 日历（农历/节气/节日）
-│           ├── Accounting/  # 记账分析（Recharts 图表）
+│           ├── Calendar/    # 日历（农历/节气/节日/生肖）
+│           ├── Accounting/  # 记账分析 + 记录子视图
 │           ├── Notes/       # Markdown 笔记
-│           └── Settings/    # 设置（主题/同步/导入导出）
+│           └── Settings/    # 设置（主题/同步/导入导出/周期交易）
 │
 ├── Cargo.toml               # Rust 工作区
 └── package.json             # 工作区脚本
@@ -285,16 +291,17 @@ rili-rust/
 
 ## 数据库设计
 
-### 7 张表
+### 8 张表
 
 ```sql
-transactions     -- 记账记录 (版本号/软删除/checksum)
-categories       -- 分类预设 (收入/支出/图标/颜色)
-notes            -- 笔记索引 (日期→文件路径)
-settings         -- 键值设置 (主题/同步配置)
-sync_log         -- 同步日志
-sync_queue       -- 异步同步队列
-sync_metadata    -- 同步元数据 (版本号/checksum)
+transactions      -- 记账记录 (版本号/软删除/checksum)
+categories        -- 分类预设 (收入/支出/图标/颜色)
+notes             -- 笔记索引 (日期→文件路径)
+settings          -- 键值设置 (主题/同步配置)
+sync_log          -- 同步日志
+sync_queue        -- 异步同步队列
+sync_metadata     -- 同步元数据 (版本号/checksum)
+recurring_rules   -- 周期交易规则 (start_date/amount/type/interval)
 ```
 
 ### 数据流
@@ -328,8 +335,28 @@ export interface BackendAdapter {
   getWeeklyAnalysis(year: number, week: number): Promise<WeeklyAnalysis>;
   saveNote(date: string, content: string): Promise<void>;
   syncData(config: SyncConfig): Promise<string>;
-  exportAllData(): Promise<string>;
-  // ... 共 30+ 个方法
+  exportSystemJson(): Promise<string>;
+
+  // ── 周期交易 ──
+  addRecurringRule(rule: RecurringRule): Promise<number>;
+  updateRecurringRule(rule: RecurringRule): Promise<void>;
+  deleteRecurringRule(id: number): Promise<void>;
+  getRecurringRules(): Promise<RecurringRule[]>;
+  generateRecurringTransactions(endDate: string): Promise<number>;
+  // ... 共 40+ 个方法
+}
+
+export interface RecurringRule {
+  id?: number;
+  start_date: string;
+  amount: number;
+  transaction_type: 'income' | 'expense';
+  category: string;
+  note?: string;
+  interval: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval_value: number;
+  end_date?: string;
+  is_active: boolean;
 }
 ```
 
@@ -356,4 +383,4 @@ export const backend: BackendAdapter = isTauri()
 | 无 CLI | `rili-cli/` | 新增 |
 | 前/后端耦合 | `frontend/src/api/` | 新增适配层 |
 
-数据库 schema 不变，旧版 `rili.db` 可直接复用。
+数据库 schema 新增 `recurring_rules` 表（通过迁移 `002_recurring.sql`），原有 7 张表不变，旧版 `rili.db` 可复用。

@@ -585,6 +585,11 @@ body {
   flex-direction: column;
 }
 
+.modal-lg {
+  max-width: 800px;
+  width: 95%;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -610,6 +615,41 @@ body {
   gap: 8px;
   padding: 16px;
   border-top: 1px solid var(--border);
+}
+
+/* Date info card */
+.date-info-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.date-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.date-info-row:last-child {
+  border-bottom: none;
+}
+.date-info-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.date-info-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.date-info-value.solar-term {
+  color: var(--primary);
+  font-weight: 600;
+}
+.date-info-value.holiday {
+  color: var(--error);
+  font-weight: 600;
 }
 
 /* Forms */

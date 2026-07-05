@@ -20,6 +20,8 @@ interface AppState {
   loadTheme: () => Promise<void>;
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
+  detailDate: string | null;
+  setDetailDate: (date: string | null) => void;
   transactions: Transaction[];
   loadTransactions: (startDate: string, endDate: string) => Promise<void>;
   addTransaction: (transaction: Transaction) => Promise<void>;
@@ -79,6 +81,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   selectedDate: new Date(),
   setSelectedDate: (date) => set({ selectedDate: date }),
+  detailDate: null,
+  setDetailDate: (date) => set({ detailDate: date }),
 
   transactions: [],
   loadTransactions: async (startDate, endDate) => {

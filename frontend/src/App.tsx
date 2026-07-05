@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Calendar } from './components/Calendar/Calendar';
 import { DateDetailModal } from './components/Calendar/DateDetailModal';
 import { Accounting } from './components/Accounting/Accounting';
+import { DayAccounting } from './components/Accounting/DayAccounting';
 import { Notes } from './components/Notes/Notes';
 import { Settings } from './components/Settings/Settings';
 import { useAppStore } from './stores/appStore';
 import './styles.css';
 
 function App() {
-  const { currentView, setCurrentView, setSelectedDate, loadTransactions, loadTheme } = useAppStore();
+  const { currentView, setCurrentView, setSelectedDate, loadTransactions, loadTheme, detailDate, setDetailDate } = useAppStore();
   const [showDateModal, setShowDateModal] = useState(false);
   const [modalDate, setModalDate] = useState<Date>(new Date());
 
@@ -25,7 +26,7 @@ function App() {
     setShowDateModal(true);
   };
 
-  const handleGoToToday = () => {
+const handleGoToToday = () => {
     const today = new Date();
     setSelectedDate(today);
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -136,6 +137,14 @@ function App() {
           date={modalDate}
           onClose={() => setShowDateModal(false)}
         />
+      )}
+
+      {detailDate && (
+        <div className="modal-overlay" onClick={() => setDetailDate(null)}>
+          <div className="modal modal-lg" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflow: 'auto' }}>
+            <DayAccounting date={detailDate} onClose={() => setDetailDate(null)} />
+          </div>
+        </div>
       )}
     </div>
   );

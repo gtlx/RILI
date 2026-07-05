@@ -54,6 +54,20 @@ export interface MonthlyAnalysis {
   top_categories: { category: string; amount: number }[];
 }
 
+export interface RecurringRule {
+  id?: number;
+  start_date: string;
+  amount: number;
+  transaction_type: 'income' | 'expense';
+  category: string;
+  note?: string;
+  interval: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval_value: number;
+  end_date?: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
 export interface SyncConfig {
   server_url: string;
   username: string;
@@ -117,6 +131,13 @@ export interface BackendAdapter {
   // ── 笔记: ZIP──
   exportNotesZip(): Promise<string>;
   importNotesZip(base64Data: string): Promise<number>;
+
+  // ── 周期交易 ──
+  addRecurringRule(rule: RecurringRule): Promise<number>;
+  updateRecurringRule(rule: RecurringRule): Promise<void>;
+  deleteRecurringRule(id: number): Promise<void>;
+  getRecurringRules(): Promise<RecurringRule[]>;
+  generateRecurringTransactions(endDate: string): Promise<number>;
 
   // 文件保存（跨平台：Tauri 用对话框，浏览器用下载）
   saveFileDialog(content: string, filename: string, mimeType: string): Promise<void>;
