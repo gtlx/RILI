@@ -1,4 +1,4 @@
-use crate::AppState;
+use crate::{with_db, AppState};
 use rili_core::models::SyncConfig;
 use rili_core::models::SyncMetadata;
 use rili_core::services::SyncService;
@@ -18,30 +18,18 @@ pub fn sync_data_incremental(state: State<AppState>, config: SyncConfig) -> Resu
 }
 #[tauri::command]
 pub fn test_sync_connection(config: SyncConfig) -> Result<bool, String> {
+    let tmp = tempfile::tempdir().map_err(|e| e.to_string())?;
     let db = std::sync::Arc::new(
-        rili_core::database::Database::open(&std::path::PathBuf::from("/tmp/rili-sync-test"))
-            .map_err(|e| e.to_string())?,
+        rili_core::database::Database::open(tmp.path()).map_err(|e| e.to_string())?,
     );
     let svc = SyncService::new(db);
     svc.test_connection(&config).map_err(|e| e.to_string())
 }
 #[tauri::command]
 pub fn get_last_sync_time(state: State<AppState>) -> Result<Option<String>, String> {
-    state
-        .core
-        .lock()
-        .map_err(|e| e.to_string())?
-        .db
-        .get_last_sync()
-        .map_err(|e| e.to_string())
+    with_db(&state, |db| db.get_last_sync())
 }
 #[tauri::command]
 pub fn get_sync_metadata(state: State<AppState>) -> Result<SyncMetadata, String> {
-    state
-        .core
-        .lock()
-        .map_err(|e| e.to_string())?
-        .db
-        .get_sync_metadata()
-        .map_err(|e| e.to_string())
+    with_db(&state, |db| db.get_sync_metadata())
 }

@@ -28,7 +28,7 @@ jobs:
         run: cargo fmt --check
 
       - name: Clippy
-        run: cargo clippy -p rili-core 2>&1 | head -30
+        run: cargo clippy --all-targets -- -D warnings
 
       - name: Build core & cli
         run: cargo build -p rili-core -p rili-cli

@@ -70,9 +70,10 @@ impl Database {
         // 导入笔记元数据（如果有）
         if let Some(notes) = data.notes {
             for n in notes {
+                let file_path = self.notes_dir().join(format!("{}.md", n.date));
                 conn.execute(
                     "INSERT OR REPLACE INTO notes (id, date, file_path, version, is_deleted, checksum, updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7)",
-                    rusqlite::params![n.id, n.date, n.file_path, n.version, n.is_deleted as i32, n.checksum, n.updated_at],
+                    rusqlite::params![n.id, n.date, file_path.to_string_lossy().to_string(), n.version, n.is_deleted as i32, n.checksum, n.updated_at],
                 )?;
             }
         }
@@ -136,41 +137,45 @@ impl Database {
     /// 导出记账为 CSV
     pub fn export_accounting_csv(&self, start_date: &str, end_date: &str) -> Result<String, Error> {
         let txns = self.get_transactions(start_date, end_date)?;
-        let mut csv = String::from("日期,类型,金额,分类,备注\n");
+        let mut wtr = csv::Writer::from_writer(Vec::new());
+        wtr.write_record(["日期", "类型", "金额", "分类", "备注"])?;
         for t in txns {
-            let note = t
-                .note
-                .unwrap_or_default()
-                .replace(",", ";")
-                .replace("\n", " ");
-            csv.push_str(&format!(
-                "{},{},{},{},{}\n",
-                t.date, t.transaction_type, t.amount, t.category, note
-            ));
+            wtr.write_record(&[
+                t.date,
+                t.transaction_type,
+                format!("{:.2}", t.amount),
+                t.category,
+                t.note.unwrap_or_default(),
+            ])?;
         }
-        Ok(csv)
+        let data = wtr.into_inner().map_err(|e| Error::General(e.to_string()))?;
+        Ok(String::from_utf8(data).map_err(|e| Error::General(e.to_string()))?)
     }
 
     /// 从 CSV 导入记账，返回导入条数
     pub fn import_accounting_csv(&self, csv_data: &str) -> Result<i64, Error> {
         let conn = self.conn();
+        let mut rdr = csv::ReaderBuilder::new()
+            .flexible(true)
+            .from_reader(csv_data.as_bytes());
         let mut count = 0i64;
-        for line in csv_data.lines().skip(1) {
-            let parts: Vec<&str> = line.split(',').collect();
-            if parts.len() >= 4 {
-                let date = parts[0].trim();
-                let tx_type = parts[1].trim();
-                let amount: f64 = parts[2].trim().parse().unwrap_or(0.0);
-                let category = parts[3].trim();
-                let note = if parts.len() > 4 {
-                    Some(parts[4].trim().to_string())
-                } else {
-                    None
-                };
-                conn.execute("INSERT INTO transactions (date, amount, transaction_type, category, note) VALUES (?1,?2,?3,?4,?5)",
-                    rusqlite::params![date, amount, tx_type, category, note])?;
-                count += 1;
+        for result in rdr.records() {
+            let record = result?;
+            if record.len() < 4 {
+                continue;
             }
+            let date = record[0].trim().to_string();
+            let tx_type = record[1].trim().to_string();
+            let amount: f64 = record[2].trim().parse().unwrap_or(0.0);
+            let category = record[3].trim().to_string();
+            let note = if record.len() > 4 && !record[4].is_empty() {
+                Some(record[4].trim().to_string())
+            } else {
+                None
+            };
+            conn.execute("INSERT INTO transactions (date, amount, transaction_type, category, note) VALUES (?1,?2,?3,?4,?5)",
+                rusqlite::params![date, amount, tx_type, category, note])?;
+            count += 1;
         }
         Ok(count)
     }

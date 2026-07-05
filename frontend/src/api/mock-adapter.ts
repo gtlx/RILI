@@ -50,11 +50,49 @@ export class MockBackend implements BackendAdapter {
     const n = this.noteMeta.find(x => x.date === date);
     if (n) n.is_deleted = true;
   }
+  private computeAnalysis(txns: Transaction[]) {
+    const income = txns.filter(t => t.transaction_type === 'income' && !t.is_deleted);
+    const expense = txns.filter(t => t.transaction_type === 'expense' && !t.is_deleted);
+    const total_income = income.reduce((s, t) => s + t.amount, 0);
+    const total_expense = expense.reduce((s, t) => s + t.amount, 0);
+    const byCategory = (list: Transaction[]) => {
+      const map = new Map<string, number>();
+      for (const t of list) map.set(t.category, (map.get(t.category) || 0) + t.amount);
+      return Array.from(map, ([category, amount]) => ({ category, amount }));
+    };
+    return { total_income, total_expense, income_by_category: byCategory(income), expense_by_category: byCategory(expense) };
+  }
+
   async getWeeklyAnalysis(y: number, w: number): Promise<WeeklyAnalysis> {
-    return { week_start: '', week_end: '', total_income: 0, total_expense: 0, income_by_category: [], expense_by_category: [], daily_expense: [], compare_to_last_week: 0 };
+    const startOfYear = new Date(y, 0, 1);
+    const dayOfYear = (w - 1) * 7;
+    const weekStart = new Date(startOfYear.getTime() + dayOfYear * 86400000);
+    const weekEnd = new Date(weekStart.getTime() + 6 * 86400000);
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const weekTxns = this.txns.filter(t => !t.is_deleted && t.date >= fmt(weekStart) && t.date <= fmt(weekEnd));
+    const prevWeekTxns = this.txns.filter(t => !t.is_deleted && t.date >= fmt(new Date(weekStart.getTime() - 7 * 86400000)) && t.date < fmt(weekStart));
+    const prevExpense = prevWeekTxns.filter(t => t.transaction_type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const { total_income, total_expense, income_by_category, expense_by_category } = this.computeAnalysis(weekTxns);
+    const daily_expense = weekTxns.filter(t => t.transaction_type === 'expense').reduce((acc, t) => {
+      const d = acc.find(x => x.date === t.date);
+      if (d) d.amount += t.amount; else acc.push({ date: t.date, amount: t.amount });
+      return acc;
+    }, [] as { date: string; amount: number }[]);
+    const compare_to_last_week = prevExpense > 0 ? ((total_expense - prevExpense) / prevExpense) * 100 : 0;
+    return { week_start: fmt(weekStart), week_end: fmt(weekEnd), total_income, total_expense, income_by_category, expense_by_category, daily_expense, compare_to_last_week };
   }
   async getMonthlyAnalysis(y: number, m: number): Promise<MonthlyAnalysis> {
-    return { month: String(m).padStart(2,'0'), year: y, total_income: 0, total_expense: 0, income_by_category: [], expense_by_category: [], compare_to_last_month: 0, top_categories: [] };
+    const monthStr = String(m).padStart(2, '0');
+    const monthTxns = this.txns.filter(t => !t.is_deleted && t.date.startsWith(`${y}-${monthStr}`));
+    const prevM = m === 1 ? 12 : m - 1;
+    const prevY = m === 1 ? y - 1 : y;
+    const prevMonthStr = String(prevM).padStart(2, '0');
+    const prevTxns = this.txns.filter(t => !t.is_deleted && t.date.startsWith(`${prevY}-${prevMonthStr}`));
+    const prevExpense = prevTxns.filter(t => t.transaction_type === 'expense').reduce((s, t) => s + t.amount, 0);
+    const { total_income, total_expense, income_by_category, expense_by_category } = this.computeAnalysis(monthTxns);
+    const top_categories = [...expense_by_category].sort((a, b) => b.amount - a.amount).slice(0, 5);
+    const compare_to_last_month = prevExpense > 0 ? ((total_expense - prevExpense) / prevExpense) * 100 : 0;
+    return { month: monthStr, year: y, total_income, total_expense, income_by_category, expense_by_category, compare_to_last_month, top_categories };
   }
   async getSetting(k: string): Promise<string | null> { return this.settings.get(k) || null; }
   async setSetting(k: string, v: string): Promise<void> { this.settings.set(k, v); }

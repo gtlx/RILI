@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { backend } from '../api';
 import type { Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncMetadata, SyncConfig, ViewType, Theme } from '../api/backend';
+export type { WeeklyAnalysis, MonthlyAnalysis, Theme };
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;

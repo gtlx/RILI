@@ -6,6 +6,8 @@
     "tauri:dev": "cd rili-tauri && cargo tauri dev",
     "cli": "cargo run -p rili-cli --",
     "frontend:dev": "cd frontend && npm run dev",
-    "frontend:build": "cd frontend && npm run build"
+    "frontend:build": "cd frontend && npm run build",
+    "deploy": "bash /home/gtlx/项目/workflow/deploy.sh /home/gtlx/项目/workflow/workflow.conf",
+    "setup:server": "echo '在构建服务器上运行: bash /home/gtlx/项目/workflow/setup-server.sh'"
   }
 }

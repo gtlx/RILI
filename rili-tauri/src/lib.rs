@@ -7,6 +7,14 @@ pub struct AppState {
     pub core: Mutex<App>,
 }
 
+pub fn with_db<T>(
+    state: &AppState,
+    f: impl FnOnce(&rili_core::database::Database) -> Result<T, rili_core::utils::Error>,
+) -> Result<T, String> {
+    let app = state.core.lock().map_err(|e| e.to_string())?;
+    f(&app.db).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let data_dir = dirs_next::data_dir()

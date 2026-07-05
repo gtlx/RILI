@@ -1,14 +1,11 @@
 pub mod analysis_repo;
 pub mod category_repo;
-pub mod connection;
 pub mod note_repo;
 pub mod settings_repo;
 pub mod sync_repo;
 pub mod transaction_repo;
 
-pub use connection::*;
 
-use crate::models::*;
 use crate::utils::Error;
 use rusqlite::Connection;
 use std::path::Path;
@@ -16,7 +13,7 @@ use std::sync::Mutex;
 
 pub struct Database {
     conn: Mutex<Connection>,
-    data_dir: String,
+    data_dir: std::path::PathBuf,
 }
 
 impl Database {
@@ -30,7 +27,7 @@ impl Database {
 
         let db = Self {
             conn: Mutex::new(conn),
-            data_dir: data_dir.to_string_lossy().to_string(),
+            data_dir: data_dir.to_path_buf(),
         };
         db.run_migrations()?;
         log::info!("Database opened: {:?}", db_path);
@@ -44,11 +41,11 @@ impl Database {
         Ok(())
     }
 
-    pub fn data_dir(&self) -> &str {
+    pub fn data_dir(&self) -> &std::path::Path {
         &self.data_dir
     }
     pub fn notes_dir(&self) -> std::path::PathBuf {
-        std::path::Path::new(&self.data_dir).join("notes")
+        self.data_dir.join("notes")
     }
     pub fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
         self.conn.lock().unwrap()

@@ -14,6 +14,8 @@ pub enum Error {
     NotFound(String),
     #[error("Sync error: {0}")]
     Sync(String),
+    #[error("CSV error: {0}")]
+    Csv(#[from] csv::Error),
     #[error("General: {0}")]
     General(String),
 }

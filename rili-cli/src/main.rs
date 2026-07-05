@@ -194,3 +194,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cli_add_tx_parsing() {
+        let cli = Cli::try_parse_from(["rili", "add-tx", "2026-07-01", "50.0", "expense", "餐饮", "午餐"]);
+        assert!(cli.is_ok());
+        match cli.unwrap().command {
+            Commands::AddTx { date, amount, tx_type, category, note } => {
+                assert_eq!(date, "2026-07-01");
+                assert!((amount - 50.0).abs() < 1e-10);
+                assert_eq!(tx_type, "expense");
+                assert_eq!(category, "餐饮");
+                assert_eq!(note, Some("午餐".to_string()));
+            }
+            _ => panic!("expected AddTx"),
+        }
+    }
+
+    #[test]
+    fn test_cli_list_tx_parsing() {
+        let cli = Cli::try_parse_from(["rili", "list-tx", "2026-01-01", "2026-12-31"]);
+        assert!(cli.is_ok());
+        match cli.unwrap().command {
+            Commands::ListTx { start, end } => {
+                assert_eq!(start, "2026-01-01");
+                assert_eq!(end, "2026-12-31");
+            }
+            _ => panic!("expected ListTx"),
+        }
+    }
+
+    #[test]
+    fn test_cli_export_parsing() {
+        let path = std::env::temp_dir().join("backup.json");
+        let path_str = path.to_string_lossy().to_string();
+        let cli = Cli::try_parse_from(["rili", "export", &path_str]);
+        assert!(cli.is_ok());
+        match cli.unwrap().command {
+            Commands::Export { path: p } => assert_eq!(p, path_str),
+            _ => panic!("expected Export"),
+        }
+    }
+}
