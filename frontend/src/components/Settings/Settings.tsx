@@ -360,8 +360,8 @@ export const Settings: React.FC = () => {
               padding: '8px 12px', 
               borderRadius: '6px', 
               marginBottom: '16px',
-              background: balanceStatus.includes('失败') ? '#FEE2E2' : '#D1FAE5',
-              color: balanceStatus.includes('失败') ? '#EF4444' : '#10B981'
+              background: balanceStatus.includes('失败') ? 'var(--status-error-bg)' : 'var(--status-success-bg)',
+              color: balanceStatus.includes('失败') ? 'var(--status-error-color)' : 'var(--status-success-color)'
             }}>
               {balanceStatus}
             </div>
@@ -417,8 +417,8 @@ export const Settings: React.FC = () => {
               padding: '8px 12px', 
               borderRadius: '6px', 
               marginBottom: '16px',
-              background: syncStatus === 'error' ? '#FEE2E2' : syncStatus === 'success' ? '#D1FAE5' : '#E0E7FF',
-              color: syncStatus === 'error' ? '#EF4444' : syncStatus === 'success' ? '#10B981' : '#4F46E5'
+              background: syncStatus === 'error' ? 'var(--status-error-bg)' : syncStatus === 'success' ? 'var(--status-success-bg)' : 'var(--status-info-bg)',
+              color: syncStatus === 'error' ? 'var(--status-error-color)' : syncStatus === 'success' ? 'var(--status-success-color)' : 'var(--status-info-color)'
             }}>
               {syncMessage}
             </div>
@@ -574,8 +574,8 @@ export const Settings: React.FC = () => {
           {importStatus && (
             <div style={{
               padding: '8px 12px', borderRadius: '6px', marginTop: '12px',
-              background: importStatus.includes('失败') ? '#FEE2E2' : '#D1FAE5',
-              color: importStatus.includes('失败') ? '#EF4444' : '#10B981',
+              background: importStatus.includes('失败') ? 'var(--status-error-bg)' : 'var(--status-success-bg)',
+              color: importStatus.includes('失败') ? 'var(--status-error-color)' : 'var(--status-success-color)',
               fontSize: '13px'
             }}>
               {importStatus}
@@ -594,8 +594,8 @@ export const Settings: React.FC = () => {
           {recurStatus && (
             <div style={{
               padding: '8px 12px', borderRadius: '6px', marginBottom: '12px',
-              background: recurStatus.includes('失败') ? '#FEE2E2' : '#D1FAE5',
-              color: recurStatus.includes('失败') ? '#EF4444' : '#10B981',
+              background: recurStatus.includes('失败') ? 'var(--status-error-bg)' : 'var(--status-success-bg)',
+              color: recurStatus.includes('失败') ? 'var(--status-error-color)' : 'var(--status-success-color)',
               fontSize: '13px'
             }}>
               {recurStatus}
@@ -790,8 +790,8 @@ export const Settings: React.FC = () => {
                     <span style={{
                       display: 'inline-block', marginLeft: '8px', padding: '0 6px', borderRadius: '4px',
                       fontSize: '11px', fontWeight: 500,
-                      background: log.action === 'INSERT' ? '#D1FAE5' : log.action === 'UPDATE' ? '#E0E7FF' : '#FEE2E2',
-                      color: log.action === 'INSERT' ? '#10B981' : log.action === 'UPDATE' ? '#4F46E5' : '#EF4444',
+                      background: log.action === 'INSERT' ? 'var(--status-success-bg)' : log.action === 'UPDATE' ? 'var(--status-info-bg)' : 'var(--status-error-bg)',
+                      color: log.action === 'INSERT' ? 'var(--status-success-color)' : log.action === 'UPDATE' ? 'var(--status-info-color)' : 'var(--status-error-color)',
                     }}>
                       {log.action === 'INSERT' ? '创建' : log.action === 'UPDATE' ? '修改' : '删除'}
                     </span>

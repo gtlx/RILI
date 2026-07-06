@@ -21,6 +21,7 @@ export const Accounting: React.FC = () => {
   const [selectedWeek] = useState(getWeek(new Date()));
   const [yearData, setYearData] = useState<YearMonthData[]>([]);
   const [initialBalance, setInitialBalance] = useState(0);
+  const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const {
@@ -148,44 +149,42 @@ export const Accounting: React.FC = () => {
           </div>
           <div className="calendar-title">{getTitle()}</div>
           <div className="calendar-header-right">
-            <div style={{ position: 'relative' }}>
-              {searchQuery.trim() ? (
-                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  <input
-                    className="input"
-                    type="text"
-                    placeholder="搜索分类/备注..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    autoFocus
-                    style={{ height: '28px', fontSize: '12px', width: '160px', padding: '0 8px' }}
-                  />
-                  <button
-                    className="btn btn-icon btn-secondary"
-                    onClick={() => setSearchQuery('')}
-                    title="清除搜索"
-                    style={{ width: '28px', height: '28px', flexShrink: 0 }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
+            {showSearch ? (
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="搜索分类/备注..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  autoFocus
+                  style={{ height: '28px', fontSize: '12px', width: '160px', padding: '0 8px' }}
+                />
                 <button
                   className="btn btn-icon btn-secondary"
-                  onClick={() => setSearchQuery(' ')}
-                  title="搜索"
-                  style={{ width: '28px', height: '28px' }}
+                  onClick={() => { setShowSearch(false); setSearchQuery(''); }}
+                  title="关闭搜索"
+                  style={{ width: '28px', height: '28px', flexShrink: 0 }}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="M21 21l-4.35-4.35" />
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <button
+                className="btn btn-icon btn-secondary"
+                onClick={() => setShowSearch(true)}
+                title="搜索"
+                style={{ width: '28px', height: '28px' }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -260,10 +259,10 @@ export const Accounting: React.FC = () => {
             <div className="chart-title">{selectedYear}年月度收支对比</div>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={yearChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} />
-                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '6px' }} />
+                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px' }} />
                 <Bar dataKey="income" fill="#10B981" name="收入" />
                 <Bar dataKey="expense" fill="#EF4444" name="支出" />
               </BarChart>
@@ -273,10 +272,10 @@ export const Accounting: React.FC = () => {
             <div className="chart-title">月度结余趋势</div>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={yearChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} />
-                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '6px' }} />
+                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px' }} />
                 <Line type="monotone" dataKey="balance" stroke="#4F46E5" strokeWidth={2} dot={{ fill: '#4F46E5' }} />
               </LineChart>
             </ResponsiveContainer>
@@ -387,7 +386,7 @@ export const Accounting: React.FC = () => {
                         <span>{cat.category}</span>
                         <span style={{ fontFamily: 'var(--font-mono)' }}>¥{cat.amount.toFixed(2)} ({percentage.toFixed(1)}%)</span>
                       </div>
-                      <div style={{ height: '8px', background: '#E5E7EB', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '8px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${percentage}%`, background: COLORS[index % COLORS.length], borderRadius: '4px' }} />
                       </div>
                     </div>
@@ -431,10 +430,10 @@ export const Accounting: React.FC = () => {
               <div className="chart-title">每日支出趋势</div>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={chartData.dailyExpenseData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="date" stroke="#6B7280" fontSize={12} />
                   <YAxis stroke="#6B7280" fontSize={12} />
-                  <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`, '支出']} contentStyle={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: '6px' }} />
+                  <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`, '支出']} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px' }} />
                   <Line type="monotone" dataKey="amount" stroke="#EF4444" strokeWidth={2} dot={{ fill: '#EF4444' }} />
                 </LineChart>
               </ResponsiveContainer>
