@@ -8,6 +8,8 @@ import { Settings } from './components/Settings/Settings';
 import { useAppStore } from './stores/appStore';
 import './styles.css';
 
+const isMobile = () => window.innerWidth <= 768;
+
 function App() {
   const { currentView, setCurrentView, setSelectedDate, loadTransactions, loadTheme, detailDate, setDetailDate } = useAppStore();
   const [showDateModal, setShowDateModal] = useState(false);
@@ -16,6 +18,26 @@ function App() {
   useEffect(() => {
     loadTheme();
   }, [loadTheme]);
+
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      e.preventDefault();
+      if (showDateModal) {
+        setShowDateModal(false);
+        return;
+      }
+      if (detailDate) {
+        setDetailDate(null);
+        return;
+      }
+    };
+    window.addEventListener('popstate', handleBack);
+    window.addEventListener('tauri://back-requested', handleBack);
+    return () => {
+      window.removeEventListener('popstate', handleBack);
+      window.removeEventListener('tauri://back-requested', handleBack);
+    };
+  }, [showDateModal, detailDate, setDetailDate]);
 
   const handleDateClick = (date: Date) => {
     setModalDate(date);

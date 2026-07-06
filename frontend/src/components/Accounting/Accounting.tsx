@@ -113,15 +113,24 @@ export const Accounting: React.FC = () => {
     return eachDayOfInterval({ start, end });
   }, [selectedYear, selectedMonth]);
 
+  const filteredTransactions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return transactions;
+    return transactions.filter(t =>
+      t.category.toLowerCase().includes(q) ||
+      (t.note && t.note.toLowerCase().includes(q))
+    );
+  }, [transactions, searchQuery]);
+
   const transactionIndex = useMemo(() => {
     const idx = new Map<string, typeof transactions>();
-    transactions.forEach(t => {
+    filteredTransactions.forEach(t => {
       const arr = idx.get(t.date) || [];
       arr.push(t);
       idx.set(t.date, arr);
     });
     return idx;
-  }, [transactions]);
+  }, [filteredTransactions]);
 
   if (view !== 'year' && view !== 'records' && !weeklyAnalysis && !monthlyAnalysis) {
     return <div className="loading"><div className="spinner"></div></div>;
@@ -139,14 +148,44 @@ export const Accounting: React.FC = () => {
           </div>
           <div className="calendar-title">{getTitle()}</div>
           <div className="calendar-header-right">
-            <input
-              className="input"
-              type="text"
-              placeholder="搜索分类/备注..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{ height: '28px', fontSize: '12px', width: '160px', padding: '0 8px' }}
-            />
+            <div style={{ position: 'relative' }}>
+              {searchQuery.trim() ? (
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="搜索分类/备注..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    autoFocus
+                    style={{ height: '28px', fontSize: '12px', width: '160px', padding: '0 8px' }}
+                  />
+                  <button
+                    className="btn btn-icon btn-secondary"
+                    onClick={() => setSearchQuery('')}
+                    title="清除搜索"
+                    style={{ width: '28px', height: '28px', flexShrink: 0 }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="btn btn-icon btn-secondary"
+                  onClick={() => setSearchQuery(' ')}
+                  title="搜索"
+                  style={{ width: '28px', height: '28px' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
