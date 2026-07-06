@@ -2,6 +2,7 @@ pub mod commands;
 
 use rili_core::App;
 use std::sync::Mutex;
+use tauri::Manager;
 
 pub struct AppState {
     pub core: Mutex<App>,
@@ -17,18 +18,22 @@ pub fn with_db<T>(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let data_dir = dirs_next::data_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("rili-app");
-
-    let app = App::init(&data_dir).expect("Failed to init RILI core");
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .manage(AppState {
-            core: Mutex::new(app),
+        .setup(|tauri_app| {
+            let data_dir = tauri_app
+                .path()
+                .app_data_dir()
+                .expect("failed to resolve app data dir");
+            std::fs::create_dir_all(&data_dir).ok();
+
+            let core_app = App::init(&data_dir).expect("Failed to init RILI core");
+            tauri_app.manage(AppState {
+                core: Mutex::new(core_app),
+            });
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::transactions::add_transaction,
