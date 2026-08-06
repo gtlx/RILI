@@ -36,3 +36,10 @@ rili-tauri/gen/
 # Build artifacts
 *.apk
 *.zip
+
+# Flutter/Dart
+rili_flutter/.dart_tool/
+rili_flutter/build/
+rili_flutter/.flutter-plugins
+rili_flutter/.flutter-plugins-dependencies
+rili_flutter/android/local.properties
