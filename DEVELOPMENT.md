@@ -87,6 +87,43 @@ apksigner sign --ks debug.keystore --ks-pass pass:android \
   app-arm64-debug.apk
 ```
 
+## Android 正规打包与签名规范（2026-08-09 定）
+
+### 推荐：tauri android 全流程（gradle 自动对齐+签名）
+
+```bash
+# 在项目根（纯 ASCII 路径下执行，中文路径会让 gradle 报 InvalidPathException）
+pnpm tauri android build --apk
+# 产物：gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
+# gradle 流程自带 zipalign + 签名（若配置了 signingConfig），无需手动处理
+```
+
+### 手动签名铁律（绕不开 gradle 时的替代方案）
+
+**坑（实测 2026-08-09）**：`jarsigner`（v1 签名）会重排 zip 条目，破坏 native lib `.so` 的 4KB 页对齐 → Android 11+ 安装报
+`INSTALL_FAILED_INVALID_APK: Failed to extract native libraries, res=-2`。
+
+**正确流程（顺序不能反）**：
+
+```bash
+# 1. 先 zipalign 页对齐（-p = 页对齐 .so 到 4KB）
+zipalign -p -f 4 input.apk aligned.apk
+
+# 2. 再 apksigner 签名（v2/v3，兼容现代 Android）
+apksigner sign --ks ~/.android/debug.keystore \
+  --ks-key-alias androiddebugkey --ks-pass pass:android \
+  --key-pass pass:android --out final.apk aligned.apk
+
+# 3. 验证
+apksigner verify --print-certs final.apk   # 看签名者
+zipalign -c -p 4 final.apk                  # 应输出 ALIGN OK
+```
+
+- SDK 工具位置（arch 虚拟机）：`/home/gtlx/android-sdk/build-tools/35.0.0/{zipalign,apksigner}`
+- debug keystore：`~/.android/debug.keystore`（别名 `androiddebugkey`，密码 `android`）
+- **绝不用 jarsigner**（v1 破坏对齐）；zipalign 必须在签名**前**（签名后改 zip 会失效）
+- 中文路径坑：所有 Java/gradle/apksigner 操作在 `/tmp` 纯 ASCII 路径执行
+
 ## 调试
 
 ### 查看 Android 日志
