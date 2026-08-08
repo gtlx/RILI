@@ -46,20 +46,24 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
     try {
       const l = lunarCalendar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate()) as any;
       if (!l) return null;
-      const monthIdx = l.lunarMonthName ? LUNAR_MONTH_NAMES.indexOf(l.lunarMonthName) + 1 : l.lunarMonth;
-      const lunarMonthName = l.lunarLeapMonth > 0 ? '闰' + LUNAR_MONTH_NAMES[monthIdx] : LUNAR_MONTH_NAMES[monthIdx] || '';
+      // 库返回的 lunarMonthName 已正确处理闰月(如 "闰六月"),直接透传,不再自行拼接
+      const lunarMonthName = l.lunarMonthName || LUNAR_MONTH_NAMES[l.lunarMonth] || '';
       const lunarDayName = LUNAR_DAY_NAMES[l.lunarDay - 1] || '';
       return {
         lunarMonthName,
         lunarDayName,
         zodiac: ZODIAC_NAMES[(l.lunarYear - 4) % 12] || '',
         solarTerm: l.term || '',
+        // 农历传统节日(库内置节日表,如 春节/中秋节/除夕 等)
+        festival: l.lunarFestival || '',
         yearName: `${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][Math.floor(l.lunarYear / 1000)]}${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][Math.floor((l.lunarYear % 1000) / 100)]}${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][Math.floor((l.lunarYear % 100) / 10)]}${['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'][l.lunarYear % 10]}`,
       };
     } catch { return null; }
   })();
 
   const holiday = HOLIDAYS[format(date, 'MM-dd')] || null;
+  // 节日名优先取农历传统节日,否则取公历节日
+  const festivalName = lunar?.festival || holiday;
 
   const dayTransactions = transactions.filter(t => t.date === dateStr);
   const dayIncome = dayTransactions.filter(t => t.transaction_type === 'income').reduce((s, t) => s + t.amount, 0);
@@ -123,10 +127,10 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
                     <span className="date-info-value solar-term">{lunar.solarTerm}</span>
                   </div>
                 )}
-                {holiday && (
+                {festivalName && (
                   <div className="date-info-row">
                     <span className="date-info-label">节日</span>
-                    <span className="date-info-value holiday">{holiday}</span>
+                    <span className="date-info-value holiday">{festivalName}</span>
                   </div>
                 )}
               </div>

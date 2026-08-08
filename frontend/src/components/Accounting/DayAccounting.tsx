@@ -71,9 +71,13 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
 
   const handleDeleteTx = async (id: number) => {
     if (confirm('确定删除这条记录吗？')) {
-      await deleteTransaction(id);
-      if (editingId === id) resetForm();
-      await loadTransactions(currentDate, currentDate);
+      try {
+        await deleteTransaction(id);
+        if (editingId === id) resetForm();
+        await loadTransactions(currentDate, currentDate);
+      } catch (e) {
+        alert('删除失败: ' + String(e));
+      }
     }
   };
 

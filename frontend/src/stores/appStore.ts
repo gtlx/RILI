@@ -1,7 +1,14 @@
 import { create } from 'zustand';
-import { backend } from '../api';
+import { backend, getAccountingBackend } from '../api';
 import type { Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncMetadata, SyncConfig, ViewType, Theme } from '../api/backend';
 export type { WeeklyAnalysis, MonthlyAnalysis, Theme };
+
+/**
+ * 记账后端:bill 云端(默认)或本地。
+ * 记账相关操作(交易/分类/分析)统一走 getAccountingBackend(),
+ * 日历/笔记/设置等非记账功能仍走本地 backend,互不干扰。
+ */
+const accountingBackend = () => getAccountingBackend();
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
@@ -24,6 +31,9 @@ interface AppState {
   setDetailDate: (date: string | null) => void;
   transactions: Transaction[];
   loadTransactions: (startDate: string, endDate: string) => Promise<void>;
+  /** 记账后端错误提示(bill 不可达时置中文信息,界面显示友好提示,避免白屏) */
+  accountingError: string | null;
+  clearAccountingError: () => void;
   addTransaction: (transaction: Transaction) => Promise<void>;
   addTransactionWithReload: (transaction: Transaction, startDate: string, endDate: string) => Promise<void>;
   updateTransaction: (transaction: Transaction) => Promise<void>;
@@ -86,24 +96,38 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   transactions: [],
   loadTransactions: async (startDate, endDate) => {
-    const transactions = await backend.getTransactions(startDate, endDate);
-    set({ transactions });
+    try {
+      const transactions = await accountingBackend().getTransactions(startDate, endDate);
+      set({ transactions, accountingError: null });
+    } catch (e) {
+      // bill 不可达:记录错误供界面提示,数据置空(日历/笔记功能不受影响)
+      console.warn('[appStore] loadTransactions 失败:', e);
+      set({ transactions: [], accountingError: String(e) });
+    }
   },
-  addTransaction: async (transaction) => { await backend.addTransaction(transaction); },
+  accountingError: null,
+  clearAccountingError: () => set({ accountingError: null }),
+  addTransaction: async (transaction) => { await accountingBackend().addTransaction(transaction); },
   addTransactionWithReload: async (transaction, startDate, endDate) => {
-    await backend.addTransaction(transaction);
-    const transactions = await backend.getTransactions(startDate, endDate);
-    set({ transactions });
+    try {
+      await accountingBackend().addTransaction(transaction);
+      const transactions = await accountingBackend().getTransactions(startDate, endDate);
+      set({ transactions, accountingError: null });
+    } catch (e) {
+      // 写操作失败抛给调用方(DayAccounting 有 alert),同时记录提示
+      set({ accountingError: String(e) });
+      throw e;
+    }
   },
   updateTransaction: async (transaction) => {
-    await backend.updateTransaction(transaction);
+    await accountingBackend().updateTransaction(transaction);
     const sd = get().selectedDate;
     const start = new Date(sd.getFullYear(), sd.getMonth(), 1);
     const end = new Date(sd.getFullYear(), sd.getMonth() + 1, 0);
     await get().loadTransactions(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
   },
   deleteTransaction: async (id) => {
-    await backend.deleteTransaction(id);
+    await accountingBackend().deleteTransaction(id);
     const sd = get().selectedDate;
     const start = new Date(sd.getFullYear(), sd.getMonth(), 1);
     const end = new Date(sd.getFullYear(), sd.getMonth() + 1, 0);
@@ -112,13 +136,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   categories: { income: [], expense: [] },
   loadCategories: async () => {
-    const [income, expense] = await Promise.all([
-      backend.getCategories('income'), backend.getCategories('expense')
-    ]);
-    set({ categories: { income, expense } });
+    try {
+      const [income, expense] = await Promise.all([
+        accountingBackend().getCategories('income'), accountingBackend().getCategories('expense')
+      ]);
+      set({ categories: { income, expense }, accountingError: null });
+    } catch (e) {
+      console.warn('[appStore] loadCategories 失败:', e);
+      set({ categories: { income: [], expense: [] }, accountingError: String(e) });
+    }
   },
   addCategory: async (category) => {
-    await backend.addCategory(category);
+    await accountingBackend().addCategory(category);
     await get().loadCategories();
   },
 
@@ -144,12 +173,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   weeklyAnalysis: null,
   monthlyAnalysis: null,
   loadWeeklyAnalysis: async (year, week) => {
-    const a = await backend.getWeeklyAnalysis(year, week);
-    set({ weeklyAnalysis: a });
+    try {
+      const a = await accountingBackend().getWeeklyAnalysis(year, week);
+      set({ weeklyAnalysis: a, accountingError: null });
+    } catch (e) {
+      console.warn('[appStore] loadWeeklyAnalysis 失败:', e);
+      set({ weeklyAnalysis: null, accountingError: String(e) });
+    }
   },
   loadMonthlyAnalysis: async (year, month) => {
-    const a = await backend.getMonthlyAnalysis(year, month);
-    set({ monthlyAnalysis: a });
+    try {
+      const a = await accountingBackend().getMonthlyAnalysis(year, month);
+      set({ monthlyAnalysis: a, accountingError: null });
+    } catch (e) {
+      console.warn('[appStore] loadMonthlyAnalysis 失败:', e);
+      set({ monthlyAnalysis: null, accountingError: String(e) });
+    }
   },
 
   syncConfig: { server_url: '', username: '', password: '' },

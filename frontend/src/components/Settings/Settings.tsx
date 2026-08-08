@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAppStore, Theme } from '../../stores/appStore';
 import { pluginManager } from '../Calendar/plugins';
 import { backend } from '../../api';
+import {
+  getBillBaseUrl, getBillConfig, setBillConfig, setBillBackendMode, isBillBackendEnabled, billBackend,
+} from '../../api/bill-adapter';
 
 export const Settings: React.FC = () => {
   const { 
@@ -42,6 +45,47 @@ export const Settings: React.FC = () => {
   const [generating, setGenerating] = useState(false);
 
   const [auditLogs, setAuditLogs] = useState<import('../../api/backend').TransactionAudit[]>([]);
+  // ── 记账后端(bill 云端)配置 ──
+  const [billMode, setBillMode] = useState<'bill' | 'local'>(isBillBackendEnabled() ? 'bill' : 'local');
+  const [billBaseUrl, setBillBaseUrl] = useState(getBillBaseUrl());
+  const [billUsername, setBillUsername] = useState(getBillConfig().username);
+  const [billPassword, setBillPassword] = useState(getBillConfig().password);
+  const [billDefaultAccount, setBillDefaultAccount] = useState(getBillConfig().defaultAccountId);
+  const [billStatus, setBillStatus] = useState('');
+  const [billTesting, setBillTesting] = useState(false);
+
+  const handleSaveBillConfig = async () => {
+    // 保存 bill 连接配置(base URL 可配置:本地开发默认 localhost:3000,部署后填服务器地址)
+    setBillConfig({
+      baseUrl: billBaseUrl,
+      username: billUsername,
+      password: billPassword,
+      defaultAccountId: billDefaultAccount,
+    });
+    setBillBackendMode(billMode);
+    setBillStatus('bill 配置已保存,记账已切换为 ' + (billMode === 'bill' ? '云端(bill)' : '本地'));
+    setTimeout(() => setBillStatus(''), 4000);
+  };
+
+  const handleTestBill = async () => {
+    setBillTesting(true);
+    setBillStatus('');
+    // 测试连接前先把表单值写入配置,保证测试的是表单里的地址
+    setBillConfig({
+      baseUrl: billBaseUrl,
+      username: billUsername,
+      password: billPassword,
+      defaultAccountId: billDefaultAccount,
+    });
+    try {
+      const result = await billBackend.testConnection();
+      setBillStatus(result.ok ? result.message : '连接失败: ' + result.message);
+    } catch (e) {
+      setBillStatus('连接失败: ' + String(e));
+    } finally {
+      setBillTesting(false);
+    }
+  };
 
   const togglePlugin = (name: string) => {
     const plugin = pluginManager.getPlugin(name);
@@ -369,6 +413,99 @@ export const Settings: React.FC = () => {
           <button className="btn btn-primary" onClick={handleSaveInitialBalance}>
             保存设置
           </button>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-header">记账后端</div>
+        <div className="settings-section-body">
+          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+            记账数据存储位置:云端(bill 记账软件)或本地。切换后记账页面自动使用所选后端
+          </p>
+
+          <div className="form-group">
+            <label className="form-label">记账后端</label>
+            <select className="input" style={{ width: '100%' }} value={billMode}
+              onChange={e => setBillMode(e.target.value as 'bill' | 'local')}>
+              <option value="bill">云端(bill 记账软件)</option>
+              <option value="local">本地(当前设备)</option>
+            </select>
+          </div>
+
+          {billMode === 'bill' && (
+            <>
+              <div className="form-group">
+                <label className="form-label">bill 服务器地址</label>
+                <input
+                  type="text"
+                  className="input"
+                  style={{ width: '100%' }}
+                  value={billBaseUrl}
+                  onChange={e => setBillBaseUrl(e.target.value)}
+                  placeholder="http://localhost:3000 或 https://your-server.com"
+                />
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  本地开发默认 localhost:3000;部署到服务器后填写服务器地址
+                </p>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">用户名</label>
+                  <input
+                    type="text"
+                    className="input"
+                    style={{ width: '100%' }}
+                    value={billUsername}
+                    onChange={e => setBillUsername(e.target.value)}
+                    placeholder="如 admin"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">密码</label>
+                  <input
+                    type="password"
+                    className="input"
+                    style={{ width: '100%' }}
+                    value={billPassword}
+                    onChange={e => setBillPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">默认账户 ID (可选)</label>
+                <input
+                  type="text"
+                  className="input"
+                  style={{ width: '100%' }}
+                  value={billDefaultAccount}
+                  onChange={e => setBillDefaultAccount(e.target.value)}
+                  placeholder="留空自动使用 bill 第一个账户"
+                />
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  记账时使用 bill 中的哪个账户(在 bill 的账户列表可查看 ID)
+                </p>
+              </div>
+            </>
+          )}
+
+          {billStatus && (
+            <div style={{
+              padding: '8px 12px', borderRadius: '6px', marginBottom: '16px',
+              background: billStatus.includes('失败') || billStatus.includes('无法') ? 'var(--status-error-bg)' : 'var(--status-success-bg)',
+              color: billStatus.includes('失败') || billStatus.includes('无法') ? 'var(--status-error-color)' : 'var(--status-success-color)',
+            }}>
+              {billStatus}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn-primary" onClick={handleSaveBillConfig}>保存配置</button>
+            {billMode === 'bill' && (
+              <button className="btn btn-secondary" onClick={handleTestBill} disabled={billTesting}>
+                {billTesting ? '测试中...' : '测试连接'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

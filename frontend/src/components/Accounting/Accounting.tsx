@@ -2,10 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { format, getWeek, eachDayOfInterval } from 'date-fns';
 import { useAppStore, MonthlyAnalysis, WeeklyAnalysis } from '../../stores/appStore';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { invoke } from '@tauri-apps/api/core';
-import { backend } from '../../api';
+import { backend, getAccountingBackend } from '../../api';
 
-const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6B7280', '#3B82F6', '#6366F1'];
+const COLORS = ['#10B981', '#14B8A6', '#34D399', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6B7280', '#3B82F6', '#0D9488'];
 
 interface YearMonthData {
   month: number;
@@ -25,14 +24,15 @@ export const Accounting: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const {
-    loadTransactions, weeklyAnalysis, monthlyAnalysis,
+    loadTransactions, weeklyAnalysis, monthlyAnalysis, accountingError, clearAccountingError,
     loadWeeklyAnalysis, loadMonthlyAnalysis,
     transactions, setDetailDate,
   } = useAppStore();
 
   const loadInitialBalance = async () => {
     try {
-      const balance = await invoke<string | null>('get_setting', { key: 'initial_balance' });
+      // 初始余额是本地设置(不随记账后端切换),走本地 backend
+      const balance = await backend.getSetting('initial_balance');
       setInitialBalance(balance ? parseFloat(balance) : 0);
     } catch {
       setInitialBalance(0);
@@ -62,7 +62,8 @@ export const Accounting: React.FC = () => {
     const months: YearMonthData[] = [];
     for (let m = 1; m <= 12; m++) {
       try {
-        const analysis = await invoke<MonthlyAnalysis>('get_monthly_analysis', { year: selectedYear, month: m });
+        // 年视图逐月分析:走记账后端(bill 云端或本地)
+        const analysis = await getAccountingBackend().getMonthlyAnalysis(selectedYear, m);
         months.push({ month: m, income: analysis.total_income, expense: analysis.total_expense, balance: analysis.total_income - analysis.total_expense });
       } catch {
         months.push({ month: m, income: 0, expense: 0, balance: 0 });
@@ -132,6 +133,31 @@ export const Accounting: React.FC = () => {
     });
     return idx;
   }, [filteredTransactions]);
+
+  // bill 不可达时显示友好错误提示(而不是永远转圈/白屏)
+  if (accountingError) {
+    return (
+      <div>
+        <div style={{
+          padding: '12px 16px', borderRadius: '8px', marginBottom: '16px',
+          background: 'var(--status-error-bg)', color: 'var(--status-error-color)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
+        }}>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: '4px' }}>⚠️ 记账数据加载失败</div>
+            <div style={{ fontSize: '13px', wordBreak: 'break-all' }}>{accountingError}</div>
+            <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>
+              请检查「设置 → 记账后端」中的 bill 服务器地址与账号,或切换回本地记账
+            </div>
+          </div>
+          <button className="btn btn-sm btn-secondary" style={{ flexShrink: 0 }} onClick={clearAccountingError}>知道了</button>
+        </div>
+        <div className="empty-state" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          暂无记账数据(bill 服务器不可达)
+        </div>
+      </div>
+    );
+  }
 
   if (view !== 'year' && view !== 'records' && !weeklyAnalysis && !monthlyAnalysis) {
     return <div className="loading"><div className="spinner"></div></div>;
@@ -262,7 +288,7 @@ export const Accounting: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} />
-                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px' }} />
+                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px' }} />
                 <Bar dataKey="income" fill="#10B981" name="收入" />
                 <Bar dataKey="expense" fill="#EF4444" name="支出" />
               </BarChart>
@@ -275,8 +301,8 @@ export const Accounting: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} />
-                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '6px' }} />
-                <Line type="monotone" dataKey="balance" stroke="#4F46E5" strokeWidth={2} dot={{ fill: '#4F46E5' }} />
+                <Tooltip formatter={(value: number) => [`¥${value.toFixed(2)}`]} contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px' }} />
+                <Line type="monotone" dataKey="balance" stroke="#10B981" strokeWidth={2} dot={{ fill: '#10B981' }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

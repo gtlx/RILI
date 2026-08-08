@@ -10,6 +10,8 @@ interface LunarInfo {
   lunarDayName: string;
   zodiac: string;
   solarTerm: string;
+  /** 农历传统节日(由 lunar-calendar 库内置节日表返回,如 春节/元宵节/端午节/中秋节/除夕 等) */
+  lunarFestival: string;
 }
 
 const LUNAR_MONTH_NAMES = ['', '正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'];
@@ -22,24 +24,28 @@ const ZODIAC_NAMES = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '�
 function getLunarInfo(date: Date): LunarInfo | null {
   try {
     const lunar = lunarCalendar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate()) as any;
-    
+
     if (!lunar) return null;
-    
-    const monthNames = ['正月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '冬月', '腊月'];
-    const monthIdx = lunar.lunarMonthName ? monthNames.indexOf(lunar.lunarMonthName) + 1 : lunar.lunarMonth;
-    const lunarMonthName = lunar.lunarLeapMonth > 0 ? '闰' + LUNAR_MONTH_NAMES[monthIdx] : LUNAR_MONTH_NAMES[monthIdx] || '';
+
+    // 库返回的 lunarMonthName 已正确处理闰月(如 "闰六月"),直接透传即可,
+    // 不要再自行拼接(原实现会把闰年所有月份都误加"闰"前缀,且闰月 indexOf 返回 -1 导致月份名为空)
+    const lunarMonthName = lunar.lunarMonthName || LUNAR_MONTH_NAMES[lunar.lunarMonth] || '';
+    // 当前月是否为闰月:库返回的月份名以"闰"开头即闰月
+    const isLeap = lunarMonthName.startsWith('闰');
     const lunarDayName = LUNAR_DAY_NAMES[lunar.lunarDay - 1] || '';
     const zodiac = ZODIAC_NAMES[(lunar.lunarYear - 4) % 12] || '';
-    
+
     return {
       lunarDay: lunar.lunarDay,
       lunarMonth: lunar.lunarMonth,
       lunarYear: lunar.lunarYear,
-      isLeap: lunar.lunarLeapMonth > 0,
+      isLeap,
       lunarMonthName,
       lunarDayName,
       zodiac,
-      solarTerm: lunar.term || ''
+      solarTerm: lunar.term || '',
+      // 传统节日直接取库内置节日表结果(已验证准确:春节/元宵节/龙抬头节/端午节/七夕情人节/中元节/中秋节/重阳节/下元节/腊八节/小年/除夕)
+      lunarFestival: lunar.lunarFestival || ''
     };
   } catch {
     return null;
@@ -50,29 +56,30 @@ export function createLunarPlugin(): CalendarPlugin {
   return {
     name: 'lunar',
     enabled: true,
-    
+
     renderDay(context: PluginRenderContext): PluginRenderResult[] {
       if (!context.isCurrentMonth) {
         return [];
       }
-      
+
       const lunar = getLunarInfo(context.date);
       if (!lunar) return [];
-      
+
       const results: PluginRenderResult[] = [];
-      
-      const lunarContent = lunar.lunarDay === 1 ? lunar.lunarMonthName : lunar.lunarDayName;
-      
-      const isFestival = ['春节', '元宵节', '清明节', '端午节', '中秋节', '重阳节', '除夕'].some(f => 
-        lunar.lunarDayName === f || lunar.lunarMonthName + lunar.lunarDayName === f
-      );
-      
+
+      // 节日当天优先显示节日名(如正月初一显示"春节"而非"正月");
+      // 初一无节日时显示月份名,其余显示日名(如"十五")
+      const lunarContent = lunar.lunarFestival
+        || (lunar.lunarDay === 1 ? lunar.lunarMonthName : lunar.lunarDayName);
+
+      const isFestival = !!lunar.lunarFestival;
+
       results.push({
         content: lunarContent,
         className: isFestival ? 'festival' : lunar.lunarDay === 1 ? 'lunar-month-start' : '',
-        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}`
+        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}${lunar.lunarFestival ? ', ' + lunar.lunarFestival : ''}`
       });
-      
+
       if (lunar.solarTerm) {
         results.push({
           content: lunar.solarTerm,
@@ -80,26 +87,29 @@ export function createLunarPlugin(): CalendarPlugin {
           tooltip: `节气: ${lunar.solarTerm}`
         });
       }
-      
+
       return results;
     },
-    
+
     renderWeekCell(context: PluginRenderContext): PluginRenderResult {
       const lunar = getLunarInfo(context.date);
       if (!lunar) return {};
-      
+
       let content = '';
-      if (lunar.lunarDay === 1) {
+      // 周视图同样优先显示农历节日
+      if (lunar.lunarFestival) {
+        content = lunar.lunarFestival;
+      } else if (lunar.lunarDay === 1) {
         content = lunar.lunarMonthName;
       } else if (lunar.solarTerm) {
         content = lunar.solarTerm;
       } else if (lunar.lunarDay <= 10) {
         content = lunar.lunarDayName;
       }
-      
+
       return {
         content,
-        className: lunar.lunarDay === 1 ? 'lunar-month-start' : ''
+        className: lunar.lunarFestival ? 'festival' : lunar.lunarDay === 1 ? 'lunar-month-start' : ''
       };
     }
   };

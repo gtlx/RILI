@@ -1,9 +1,14 @@
 :root {
-  --primary: #4F46E5;
-  --primary-light: #818CF8;
-  --primary-dark: #3730A3;
+  /* 主色:靛蓝 → 薄荷绿(bill 风格 emerald→teal) */
+  --primary: #10B981;                 /* emerald-500 主色 */
+  --primary-light: #34D399;           /* emerald-400 浅色 */
+  --primary-dark: #059669;            /* emerald-600 深色 */
+  --primary-gradient: linear-gradient(135deg, #10B981 0%, #059669 50%, #0D9488 100%);   /* 头部渐变 emerald→teal(bill header) */
+  --primary-gradient-soft: linear-gradient(135deg, #10B981 0%, #14B8A6 100%);          /* 按钮渐变 emerald→teal(bill button) */
+  --primary-soft: #ECFDF5;            /* emerald-50 浅绿高亮底(激活/悬停) */
   --bg: #F9FAFB;
-  --card-bg: #FFFFFF;
+  --card-bg: rgba(255, 255, 255, 0.75);   /* 毛玻璃卡片:半透明白(bill card bg-white/80) */
+  --card-bg-solid: #FFFFFF;           /* 实底背景(日历格子/输入控件用,避免透底) */
   --text-primary: #111827;
   --text-secondary: #6B7280;
   --border: #E5E7EB;
@@ -12,38 +17,41 @@
   --error: #EF4444;
   --expense: #EF4444;
   --income: #10B981;
-  
+
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
-  
-  --radius-sm: 4px;
-  --radius: 6px;
-  --radius-lg: 8px;
-  
-  --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-lg: 0 4px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+
+  /* 圆角对齐 bill:rounded-xl(12px) / rounded-2xl(16px),头部大圆角 2rem */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+
+  /* 柔和绿色调阴影(bill shadow-emerald-500/10 系) */
+  --shadow: 0 1px 3px rgba(16, 185, 129, 0.08), 0 2px 8px rgba(16, 185, 129, 0.05);
+  --shadow-lg: 0 8px 24px rgba(16, 185, 129, 0.12), 0 2px 6px rgba(16, 185, 129, 0.06);
   --status-error-bg: #FEE2E2;
   --status-error-color: #EF4444;
   --status-success-bg: #D1FAE5;
   --status-success-color: #10B981;
-  --status-info-bg: #E0E7FF;
-  --status-info-color: #4F46E5;
-  
+  --status-info-bg: #ECFDF5;          /* 信息状态:靛蓝 → 薄荷绿 */
+  --status-info-color: #059669;
+
   --transition: 150ms ease-in-out;
 }
 
 [data-theme="dark"] {
   --bg: #111827;
-  --card-bg: #1F2937;
+  --card-bg: rgba(31, 41, 55, 0.8);   /* 毛玻璃卡片:深色半透明 */
+  --card-bg-solid: #1F2937;
   --text-primary: #F9FAFB;
   --text-secondary: #9CA3AF;
   --border: #374151;
-  --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-lg: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2);
+  --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.25);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
   --day-hover: #374151;
   --day-other-bg: #1F2937;
   --day-other-color: #6B7280;
-  --day-today-bg: #1E293B;
+  --day-today-bg: #064E3B;            /* 今日格子:薄荷绿深色高亮 */
   --badge-bg: #374151;
   --badge-color: #D1D5DB;
   --badge-festival-bg: #451A1A;
@@ -56,8 +64,8 @@
   --status-error-color: #FCA5A5;
   --status-success-bg: #064E3B;
   --status-success-color: #6EE7B7;
-  --status-info-bg: #1E1B4B;
-  --status-info-color: #A5B4FC;
+  --status-info-bg: #064E3B;          /* 信息状态:靛蓝 → 薄荷绿深色 */
+  --status-info-color: #6EE7B7;
 }
 
 .theme-option {
@@ -72,6 +80,8 @@
   transition: all var(--transition);
   color: var(--text-secondary);
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .theme-option:hover {
@@ -117,11 +127,19 @@ body {
 }
 
 .bottom-tab-bar {
+  /* 毛玻璃悬浮底栏(bill 风格半透明 + 模糊) */
   display: flex;
-  background: var(--card-bg);
-  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(229, 231, 235, 0.6);
   padding: 8px 0;
   flex-shrink: 0;
+}
+
+[data-theme="dark"] .bottom-tab-bar {
+  background: rgba(31, 41, 55, 0.8);
+  border-top-color: rgba(55, 65, 81, 0.6);
 }
 
 @media (max-width: 768px) {
@@ -178,21 +196,39 @@ body {
 }
 
 .top-bar {
-  height: 56px;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
+  /* 薄荷绿渐变头部 + 底部大圆角(bill header 椭圆矩形风格),文字白色 */
+  background: var(--primary-gradient);
+  border-bottom: none;
+  border-radius: 0 0 2rem 2rem;
+  box-shadow: var(--shadow-lg);
+  height: auto;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 16px 24px;
   margin-top: 16px;
+  color: #FFFFFF;
+}
+
+/* 渐变头部上的次按钮:半透明白玻璃底(bill 风格) */
+.top-bar .btn-secondary {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #FFFFFF;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.top-bar .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 @media (max-width: 768px) {
   .top-bar {
     margin-top: 8px;
-    padding: 0 12px;
-    height: 48px;
+    padding: 12px;
+    min-height: 48px;
   }
 }
 
@@ -205,6 +241,7 @@ body {
 .top-bar-title {
   font-size: 18px;
   font-weight: 600;
+  color: inherit;
 }
 
 .top-bar-right {
@@ -228,6 +265,8 @@ body {
 .bottom-bar {
   height: 40px;
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -255,12 +294,16 @@ body {
 }
 
 .btn-primary {
-  background: var(--primary);
+  /* 薄荷绿渐变按钮(bill button:from-emerald-500 to-teal-500) */
+  background: var(--primary-gradient-soft);
   color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
 }
 
 .btn-primary:hover {
-  background: var(--primary-dark);
+  background: var(--primary-gradient-soft);
+  filter: brightness(0.95);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
 }
 
 .btn-secondary {
@@ -312,7 +355,7 @@ body {
 
 .input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.12);
 }
 
 .input::placeholder {
@@ -326,7 +369,7 @@ body {
   border-radius: var(--radius-sm);
   font-size: 14px;
   outline: none;
-  background: white;
+  background: var(--card-bg-solid);
   cursor: pointer;
 }
 
@@ -336,10 +379,18 @@ body {
 
 /* Cards */
 .card {
+  /* 毛玻璃卡片:半透明底 + 模糊(bill card bg-white/80 backdrop-blur-sm) */
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 231, 235, 0.6);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: 16px;
+}
+
+[data-theme="dark"] .card {
+  border-color: rgba(55, 65, 81, 0.6);
 }
 
 .card-header {
@@ -356,9 +407,17 @@ body {
 
 /* Calendar */
 .calendar {
+  /* 毛玻璃容器(bill 风格) */
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 231, 235, 0.6);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+}
+
+[data-theme="dark"] .calendar {
+  border-color: rgba(55, 65, 81, 0.6);
 }
 
 .calendar-header {
@@ -426,8 +485,8 @@ body {
   display: flex;
   justify-content: space-around;
   padding: 4px;
-  background: var(--card-bg);
-  border-radius: 8px;
+  background: var(--card-bg-solid);
+  border-radius: var(--radius);
   margin-bottom: 4px;
   border: 1px solid var(--border);
 }
@@ -451,7 +510,8 @@ body {
   padding: 6px;
   cursor: pointer;
   transition: background var(--transition);
-  background: var(--card-bg);
+  /* 日历格子用实底,避免半透明透底 */
+  background: var(--card-bg-solid);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   outline: none;
@@ -460,7 +520,7 @@ body {
 }
 
 .calendar-day:hover {
-  background: var(--day-hover, #EEF2FF);
+  background: var(--day-hover, #ECFDF5);
 }
 
 .calendar-day:hover .calendar-day-number {
@@ -481,7 +541,7 @@ body {
 }
 
 .calendar-day.today {
-  background: var(--day-today-bg, #EEF2FF);
+  background: var(--day-today-bg, #ECFDF5);
   border: 2px solid var(--primary);
   border-radius: 8px;
   margin: -1px;
@@ -541,6 +601,8 @@ body {
 
 .week-day {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: 12px;
@@ -550,7 +612,7 @@ body {
 }
 
 .week-day:hover {
-  background: var(--day-hover, #EEF2FF);
+  background: var(--day-hover, #ECFDF5);
 }
 
 .week-day:hover .week-day-date {
@@ -591,8 +653,14 @@ body {
   align-items: center;
   padding: 12px;
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+}
+
+[data-theme="dark"] .transaction-item {
+  border-color: rgba(55, 65, 81, 0.6);
 }
 
 .transaction-icon {
@@ -643,12 +711,15 @@ body {
 
 /* Modal */
 .modal-overlay {
+  /* 毛玻璃遮罩(bill sheet:bg-black/40 backdrop-blur-sm) */
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -657,6 +728,8 @@ body {
 
 .modal {
   background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   max-width: 600px;
@@ -702,9 +775,15 @@ body {
 /* Date info card */
 .date-info-card {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(229, 231, 235, 0.6);
   overflow: hidden;
+}
+
+[data-theme="dark"] .date-info-card {
+  border-color: rgba(55, 65, 81, 0.6);
 }
 .date-info-row {
   display: flex;
@@ -761,6 +840,8 @@ body {
 
 .analysis-card {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: 20px;
@@ -803,6 +884,8 @@ body {
 
 .chart-container {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: 20px;
@@ -818,6 +901,8 @@ body {
 /* Notes */
 .note-editor {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
 }
@@ -924,6 +1009,8 @@ body {
 
 .note-card {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: 16px;
@@ -1011,6 +1098,8 @@ body {
 /* Settings */
 .settings-section {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   margin-bottom: 24px;
@@ -1060,7 +1149,7 @@ body {
 }
 
 .toggle.active {
-  background: var(--primary);
+  background: var(--primary-gradient-soft);
 }
 
 .toggle::after {
@@ -1117,6 +1206,8 @@ body {
 
 .stat-item {
   background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: 16px;

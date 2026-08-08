@@ -257,7 +257,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                     </div>
                   )}
                   {hasNote && (
-                    <div style={{ fontSize: '12px', color: '#4F46E5', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '4px' }}>
                       📝 有笔记
                     </div>
                   )}
