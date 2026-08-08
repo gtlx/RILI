@@ -155,3 +155,11 @@ panic 信息会以 `RustStdoutStderr` 标签输出到 logcat，包含文件名�
 | date-fns | 4.x | 日期处理 |
 | recharts | 2.x | 图表组件 |
 | zustand | 4.x | 状态管理 |
+
+## Tauri Android 5173 错误根因(2026-08-09 定)
+
+**症状**:APK 打开显示 "Failed to request http://localhost:5173/"。
+**真根因**:`Cargo.toml` 的 `tauri = { features = [] }` **未启用 `custom-protocol`** → `is_dev()` 恒真 → 无论 debug/release 都加载 devUrl(5173)。**与 brownfield、debug/release 无关**。
+**修复**:`tauri = { features = ["custom-protocol"] }` 后重编 .so。
+**坑**:gradle 检测到 jniLibs 的 .so 存在就**跳过 cargo 编译**(RustPlugin)——改了 Cargo.toml 后必须**手动确认 .so 重新编译**(日志应有 `cargo:dev=false` 和 `CARGO_FEATURE_CUSTOM_PROTOCOL=1`)。
+**检查命令**:`strings librili_tauri_lib.so | grep -c "localhost:5173"`(应为 0)。
