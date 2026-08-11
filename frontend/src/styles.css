@@ -814,6 +814,38 @@ body {
   color: var(--primary);
 }
 
+/* 周视图待办内容:橙色圆点 + 事项文字(与收支明细区分) */
+.week-day-todos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 2px;
+}
+
+.week-day-todo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.week-day-todo-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #F59E0B;
+}
+
+.week-day-todo-title {
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .week-day-empty {
   font-size: 12px;
   color: var(--text-secondary);

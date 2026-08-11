@@ -60,6 +60,15 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
     return count;
   }, [todoIndex]);
 
+  /** 当天未完成待办标题列表(含每年重复);周视图显示内容用 */
+  const getTodosForDate = useCallback((d: Date) => {
+    const dStr = format(d, 'yyyy-MM-dd');
+    const mmdd = dStr.slice(5);
+    return todos
+      .filter(t => !t.done && (t.repeat === 'yearly' ? t.date.slice(5) === mmdd : t.date === dStr))
+      .map(t => t.title);
+  }, [todos]);
+
   const enabledPlugins = useMemo(() => pluginManager.getEnabledPlugins(), []);
 
   const today = useMemo(() => new Date(), []);
@@ -294,6 +303,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
               ? pluginManager.renderWeekCell({ date: d, isCurrentMonth: true, isToday })
               : [];
             const todoCount = getTodoCount(d);
+            const dayTodos = getTodosForDate(d);
 
             return (
               <div
@@ -319,9 +329,22 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                     {todoCount > 0 && <span className="calendar-marker todo" title={`${todoCount} 项待办`} />}
                   </div>
                 </div>
-                {/* 右侧:收支明细/笔记 */}
+                {/* 右侧:待办内容/收支明细/笔记 */}
                 <div className="week-day-content">
-                  {dateTransactions.length === 0 && !hasNote ? (
+                  {dayTodos.length > 0 && (
+                    <div className="week-day-todos">
+                      {dayTodos.slice(0, 3).map((title, j) => (
+                        <div key={j} className="week-day-todo">
+                          <span className="week-day-todo-dot" />
+                          <span className="week-day-todo-title">{title}</span>
+                        </div>
+                      ))}
+                      {dayTodos.length > 3 && (
+                        <div className="week-day-more">+{dayTodos.length - 3} 项待办</div>
+                      )}
+                    </div>
+                  )}
+                  {dateTransactions.length === 0 && !hasNote && dayTodos.length === 0 ? (
                     <div className="week-day-empty">无记录</div>
                   ) : (
                     <>
