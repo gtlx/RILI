@@ -130,12 +130,14 @@ function App() {
         <div className="splash-content">
           <div className="splash-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="64" height="64">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-              <line x1="12" y1="1" x2="12" y2="23" />
-              <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+              <rect x="3" y="4" width="18" height="18" rx="4" ry="4" />
+              <line x1="15" y1="2" x2="15" y2="6" />
+              <line x1="9" y1="2" x2="9" y2="6" />
+              <line x1="6" y1="11" x2="18" y2="11" />
+              <line x1="6" y1="14.5" x2="18" y2="14.5" />
+              <line x1="6" y1="18" x2="12" y2="18" />
+              <circle cx="17.5" cy="17.5" r="4" fill="currentColor" stroke="none" />
+              <path d="M15.5 17.5 L17 19 L19.8 16" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
           <h1 className="splash-title">RILI</h1>

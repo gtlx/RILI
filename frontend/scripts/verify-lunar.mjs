@@ -8,12 +8,14 @@ const LUNAR_DAY_NAMES = ['初一', '初二', '初三', '初四', '初五', '初�
   '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
 
 // 复刻修复后 LunarPlugin.renderDay 的核心输出逻辑
+// (含 FESTIVAL_NAME_FIX 节日名规范化,须与 LunarPlugin.ts 保持一致)
+const FESTIVAL_NAME_FIX = { '七夕情人节': '七夕节' };
 function pluginRenderDay(year, month, day) {
   const lunar = lunarCalendar.solarToLunar(year, month, day);
   if (!lunar) return null;
   const lunarMonthName = lunar.lunarMonthName || LUNAR_MONTH_NAMES[lunar.lunarMonth] || '';
   const lunarDayName = LUNAR_DAY_NAMES[lunar.lunarDay - 1] || '';
-  const festival = lunar.lunarFestival || '';
+  const festival = FESTIVAL_NAME_FIX[lunar.lunarFestival || ''] || lunar.lunarFestival || '';
   const content = festival || (lunar.lunarDay === 1 ? lunarMonthName : lunarDayName);
   return {
     content,
@@ -28,7 +30,7 @@ const cases = [
   [2026, 2, 17, '春节', '正月初一'],
   [2026, 3, 3, '元宵节', '正月十五'],
   [2026, 6, 19, '端午节', '五月初五'],
-  [2026, 8, 19, '七夕情人节', '七月初七'],
+  [2026, 8, 19, '七夕节', '七月初七'],
   [2026, 8, 27, '中元节', '七月十五'],
   [2026, 9, 25, '中秋节', '八月十五'],
   [2026, 10, 18, '重阳节', '九月初九'],

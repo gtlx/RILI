@@ -21,6 +21,14 @@ const LUNAR_DAY_NAMES = ['初一', '初二', '初三', '初四', '初五', '初�
 
 const ZODIAC_NAMES = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
 
+/**
+ * 节日名称规范化:lunar-calendar 库内置节日表的部分名称不合传统叫法,
+ * 在此统一修正(如「七夕情人节」应叫「七夕节」)。
+ */
+const FESTIVAL_NAME_FIX: Record<string, string> = {
+  '七夕情人节': '七夕节',
+};
+
 function getLunarInfo(date: Date): LunarInfo | null {
   try {
     const lunar = lunarCalendar.solarToLunar(date.getFullYear(), date.getMonth() + 1, date.getDate()) as any;
@@ -44,8 +52,9 @@ function getLunarInfo(date: Date): LunarInfo | null {
       lunarDayName,
       zodiac,
       solarTerm: lunar.term || '',
-      // 传统节日直接取库内置节日表结果(已验证准确:春节/元宵节/龙抬头节/端午节/七夕情人节/中元节/中秋节/重阳节/下元节/腊八节/小年/除夕)
-      lunarFestival: lunar.lunarFestival || ''
+      // 传统节日直接取库内置节日表结果(已验证准确:春节/元宵节/龙抬头节/端午节/七夕情人节/中元节/中秋节/重阳节/下元节/腊八节/小年/除夕);
+      // 名称经 FESTIVAL_NAME_FIX 规范化(如 七夕情人节→七夕节)
+      lunarFestival: FESTIVAL_NAME_FIX[lunar.lunarFestival || ''] || lunar.lunarFestival || ''
     };
   } catch {
     return null;

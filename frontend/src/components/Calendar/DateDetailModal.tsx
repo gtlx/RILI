@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format, getDayOfYear, getWeek } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAppStore } from '../../stores/appStore';
+import { TodoPanel } from '../Todo/TodoPanel';
 import lunarCalendar from 'lunar-calendar';
 
 interface DateDetailModalProps {
@@ -249,6 +250,8 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
                   )}
                 </div>
               )}
+              {/* 待办:与笔记同 Tab,方便一眼看当日笔记与要办的事 */}
+              <TodoPanel date={date} />
             </div>
           )}
         </div>

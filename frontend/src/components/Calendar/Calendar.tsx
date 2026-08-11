@@ -12,7 +12,9 @@ import {
 } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAppStore } from '../../stores/appStore';
+import { useTodoStore } from '../../stores/todoStore';
 import { pluginManager } from './plugins';
+import { YearMonthPicker } from './YearMonthPicker';
 
 interface CalendarProps {
   onDateClick: (date: Date) => void;
@@ -21,11 +23,42 @@ interface CalendarProps {
 export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
   const [view, setView] = useState<'month' | 'week'>('month');
   const { selectedDate, transactions, notes, loadTransactions, loadNotes, setSelectedDate } = useAppStore();
+  const todos = useTodoStore(s => s.todos);
+  const loadTodos = useTodoStore(s => s.loadTodos);
   const [currentDate, setCurrentDate] = useState(() => selectedDate);
+  /** 年月选择器浮层开关 */
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     setCurrentDate(selectedDate);
   }, [selectedDate]);
+
+  // 日历页加载时载入本地待办(用于格子标记)
+  useEffect(() => {
+    loadTodos();
+  }, [loadTodos]);
+
+  /** 待办索引:日期(或 MM-DD 年度重复) → 未完成待办数 */
+  const todoIndex = useMemo(() => {
+    const idx = new Map<string, { count: number; hasYearly: boolean }>();
+    todos.forEach(t => {
+      if (t.done) return;
+      const key = t.repeat === 'yearly' ? t.date.slice(5) : t.date;
+      const cur = idx.get(key) || { count: 0, hasYearly: false };
+      cur.count += 1;
+      if (t.repeat === 'yearly') cur.hasYearly = true;
+      idx.set(key, cur);
+    });
+    return idx;
+  }, [todos]);
+
+  const getTodoCount = useCallback((d: Date) => {
+    const dStr = format(d, 'yyyy-MM-dd');
+    const direct = todoIndex.get(dStr);
+    const yearly = todoIndex.get(dStr.slice(5));
+    const count = (direct?.count || 0) + (yearly?.count || 0);
+    return count;
+  }, [todoIndex]);
 
   const enabledPlugins = useMemo(() => pluginManager.getEnabledPlugins(), []);
 
@@ -75,6 +108,14 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
     setSelectedDate(date);
   };
 
+  /** 年月选择器:跳转到指定年/月 */
+  const handleJumpTo = (year: number, month: number) => {
+    const target = new Date(year, month - 1, 1);
+    setCurrentDate(target);
+    setSelectedDate(target);
+    setShowPicker(false);
+  };
+
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
@@ -113,11 +154,28 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
               </svg>
             </button>
           </div>
-          <div className="calendar-title">
+          {/* 标题区:grid 三列等宽让标题相对整体居中;点击可跳转任意年月 */}
+          <button className="calendar-title" onClick={() => setShowPicker(true)} title="点击跳转年月">
             {format(currentDate, 'yyyy年M月', { locale: zhCN })}
+          </button>
+          <div className="calendar-header-right">
+            <button className="btn btn-icon btn-secondary" onClick={() => setShowPicker(true)} title="跳转年月">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <path d="M4 7h16M4 12h16M4 17h10" />
+              </svg>
+            </button>
           </div>
-          <div style={{ width: '60px' }}></div>
         </div>
+        {showPicker && (
+          <div className="ym-picker-overlay" onClick={() => setShowPicker(false)}>
+            <YearMonthPicker
+              year={currentDate.getFullYear()}
+              month={currentDate.getMonth() + 1}
+              onPick={handleJumpTo}
+              onClose={() => setShowPicker(false)}
+            />
+          </div>
+        )}
         <div className="calendar-grid">
           <div className="calendar-weekday-row">
             {weekdays.map((w, i) => (
@@ -149,6 +207,10 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                   {isCurrentMonth && (
                     <div className="calendar-day-markers">
                       {hasNote && <span className="calendar-marker note" title="有笔记" />}
+                      {(() => {
+                        const tc = getTodoCount(d);
+                        return tc > 0 ? <span className="calendar-marker todo" title={`${tc} 项待办`} /> : null;
+                      })()}
                     </div>
                   )}
                 </div>
@@ -158,15 +220,20 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                       date: d,
                       isCurrentMonth,
                       isToday
-                    }).map((result, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`plugin-badge ${result.className || ''}`}
-                        title={result.tooltip || ''}
-                      >
-                        {result.content || result.badge}
-                      </div>
-                    ))}
+                    }).map((result, idx) => {
+                      // 内容较长(如四字节日名)时缩字号,避免固定格子内溢出
+                      const text = result.content || result.badge || '';
+                      const long = text.length > 3 ? ' badge-long' : '';
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`plugin-badge ${result.className || ''}${long}`}
+                          title={result.tooltip || ''}
+                        >
+                          {text}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {isCurrentMonth && (incomeTotal > 0 || expenseTotal > 0) && (
@@ -226,6 +293,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
             const pluginResults = enabledPlugins.length > 0 
               ? pluginManager.renderWeekCell({ date: d, isCurrentMonth: true, isToday })
               : [];
+            const todoCount = getTodoCount(d);
 
             return (
               <div
@@ -233,7 +301,8 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                 className={`week-day ${isToday ? 'today' : ''}`}
                 onClick={() => handleDateClick(d)}
               >
-                <div className="week-day-header">
+                {/* 左侧:星期/日期/节日/待办标记 */}
+                <div className="week-day-side">
                   <div className="week-day-name">{format(d, 'EEE', { locale: zhCN })}</div>
                   <div className="week-day-date">{format(d, 'd')}</div>
                   {pluginResults.length > 0 && (
@@ -245,25 +314,32 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                       ))}
                     </div>
                   )}
+                  <div className="week-day-markers">
+                    {hasNote && <span className="calendar-marker note" title="有笔记" />}
+                    {todoCount > 0 && <span className="calendar-marker todo" title={`${todoCount} 项待办`} />}
+                  </div>
                 </div>
+                {/* 右侧:收支明细/笔记 */}
                 <div className="week-day-content">
-                  {dateTransactions.slice(0, 3).map((t, j) => (
-                    <div key={j} style={{ fontSize: '12px', marginBottom: '4px' }}>
-                      <span style={{ color: t.transaction_type === 'income' ? 'var(--income)' : 'var(--expense)' }}>
-                        {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
-                      </span>
-                      <span style={{ color: 'var(--text-secondary)', marginLeft: '4px' }}>{t.category}</span>
-                    </div>
-                  ))}
-                  {dateTransactions.length > 3 && (
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      +{dateTransactions.length - 3} 更多
-                    </div>
-                  )}
-                  {hasNote && (
-                    <div style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '4px' }}>
-                      📝 有笔记
-                    </div>
+                  {dateTransactions.length === 0 && !hasNote ? (
+                    <div className="week-day-empty">无记录</div>
+                  ) : (
+                    <>
+                      {dateTransactions.slice(0, 4).map((t, j) => (
+                        <div key={j} className="week-day-tx">
+                          <span className={`week-day-tx-amount ${t.transaction_type}`}>
+                            {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
+                          </span>
+                          <span className="week-day-tx-cat">{t.category}</span>
+                        </div>
+                      ))}
+                      {dateTransactions.length > 4 && (
+                        <div className="week-day-more">+{dateTransactions.length - 4} 更多</div>
+                      )}
+                      {hasNote && (
+                        <div className="week-day-note">📝 有笔记</div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

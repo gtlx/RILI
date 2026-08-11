@@ -317,6 +317,9 @@ export class BillBackendAdapter implements BackendAdapter {
       name: a.name,
       type: a.account_type,
       icon: a.icon,
+      // 余额(元):负债账户为负,所有账户求和 = 净资产
+      balance: a.balance_cents / 100,
+      assetType: a.asset_type,
     }));
   }
 

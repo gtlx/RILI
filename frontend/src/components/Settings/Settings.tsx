@@ -34,9 +34,6 @@ export const Settings: React.FC = () => {
   const [importStatus, setImportStatus] = useState('');
   
   const [plugins, setPlugins] = useState(() => pluginManager.getAllPlugins());
-  
-  const [initialBalance, setInitialBalance] = useState('0');
-  const [balanceStatus, setBalanceStatus] = useState('');
 
   const [recurringRules, setRecurringRules] = useState<import('../../api/backend').RecurringRule[]>([]);
   const [showRecurringForm, setShowRecurringForm] = useState(false);
@@ -50,7 +47,6 @@ export const Settings: React.FC = () => {
   const [billBaseUrl, setBillBaseUrl] = useState(getBillBaseUrl());
   const [billUsername, setBillUsername] = useState(getBillConfig().username);
   const [billPassword, setBillPassword] = useState(getBillConfig().password);
-  const [billDefaultAccount, setBillDefaultAccount] = useState(getBillConfig().defaultAccountId);
   const [billStatus, setBillStatus] = useState('');
   const [billTesting, setBillTesting] = useState(false);
 
@@ -60,7 +56,6 @@ export const Settings: React.FC = () => {
       baseUrl: billBaseUrl,
       username: billUsername,
       password: billPassword,
-      defaultAccountId: billDefaultAccount,
     });
     setBillBackendMode(billMode);
     setBillStatus('bill 配置已保存,记账已切换为 ' + (billMode === 'bill' ? '云端(bill)' : '本地'));
@@ -75,7 +70,6 @@ export const Settings: React.FC = () => {
       baseUrl: billBaseUrl,
       username: billUsername,
       password: billPassword,
-      defaultAccountId: billDefaultAccount,
     });
     try {
       const result = await billBackend.testConnection();
@@ -97,28 +91,8 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     loadLastSyncTime();
-    loadInitialBalance();
     loadRecurringRules();
   }, [loadLastSyncTime]);
-
-  const loadInitialBalance = async () => {
-    try {
-      const balance = await backend.getSetting('initial_balance');
-      setInitialBalance(balance || '0');
-    } catch {
-      setInitialBalance('0');
-    }
-  };
-
-  const handleSaveInitialBalance = async () => {
-    try {
-      await backend.setSetting('initial_balance', initialBalance);
-      setBalanceStatus('初始余额已保存');
-      setTimeout(() => setBalanceStatus(''), 3000);
-    } catch (e) {
-      setBalanceStatus('保存失败: ' + String(e));
-    }
-  };
 
   const handleSaveSyncConfig = () => {
     setSyncConfig({
@@ -376,47 +350,6 @@ export const Settings: React.FC = () => {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-header">账户设置</div>
-        <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
-            设置您的初始存款或负债，用于计算真实的净资产
-          </p>
-          <div className="form-group">
-            <label className="form-label">初始余额</label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input
-                type="number"
-                className="input"
-                style={{ width: '200px' }}
-                value={initialBalance}
-                onChange={e => setInitialBalance(e.target.value)}
-                placeholder="0.00"
-                step="0.01"
-              />
-              <span style={{ color: '#6B7280' }}>元</span>
-            </div>
-            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-              正数表示存款，负数表示负债
-            </p>
-          </div>
-          {balanceStatus && (
-            <div style={{ 
-              padding: '8px 12px', 
-              borderRadius: '6px', 
-              marginBottom: '16px',
-              background: balanceStatus.includes('失败') ? 'var(--status-error-bg)' : 'var(--status-success-bg)',
-              color: balanceStatus.includes('失败') ? 'var(--status-error-color)' : 'var(--status-success-color)'
-            }}>
-              {balanceStatus}
-            </div>
-          )}
-          <button className="btn btn-primary" onClick={handleSaveInitialBalance}>
-            保存设置
-          </button>
-        </div>
-      </div>
-
-      <div className="settings-section">
         <div className="settings-section-header">记账后端</div>
         <div className="settings-section-body">
           <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
@@ -470,20 +403,6 @@ export const Settings: React.FC = () => {
                     onChange={e => setBillPassword(e.target.value)}
                   />
                 </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">默认账户 ID (可选)</label>
-                <input
-                  type="text"
-                  className="input"
-                  style={{ width: '100%' }}
-                  value={billDefaultAccount}
-                  onChange={e => setBillDefaultAccount(e.target.value)}
-                  placeholder="留空自动使用 bill 第一个账户"
-                />
-                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                  记账时使用 bill 中的哪个账户(在 bill 的账户列表可查看 ID)
-                </p>
               </div>
             </>
           )}

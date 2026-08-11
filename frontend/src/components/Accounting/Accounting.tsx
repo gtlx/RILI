@@ -19,29 +19,22 @@ export const Accounting: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedWeek] = useState(getWeek(new Date()));
   const [yearData, setYearData] = useState<YearMonthData[]>([]);
-  const [initialBalance, setInitialBalance] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const {
     loadTransactions, weeklyAnalysis, monthlyAnalysis, accountingError, clearAccountingError,
     loadWeeklyAnalysis, loadMonthlyAnalysis,
-    transactions, setDetailDate,
+    transactions, setDetailDate, accounts, loadAccounts,
   } = useAppStore();
 
-  const loadInitialBalance = async () => {
-    try {
-      // 初始余额是本地设置(不随记账后端切换),走本地 backend
-      const balance = await backend.getSetting('initial_balance');
-      setInitialBalance(balance ? parseFloat(balance) : 0);
-    } catch {
-      setInitialBalance(0);
-    }
-  };
-
   useEffect(() => {
-    loadInitialBalance();
-  }, []);
+    // 净资产来自 bill 云端账户余额(bill 已接管账户,本地初始余额概念已废弃)
+    loadAccounts();
+  }, [loadAccounts]);
+
+  /** 净资产 = 所有账户余额之和(bill 负债账户余额为负,求和即净资产);无账户或加载失败时隐藏 */
+  const netWorth = accounts.length > 0 ? accounts.reduce((s, a) => s + (a.balance ?? 0), 0) : null;
 
   useEffect(() => {
     const start = format(new Date(selectedYear, selectedMonth - 1, 1), 'yyyy-MM-dd');
@@ -361,12 +354,17 @@ export const Accounting: React.FC = () => {
                 较上月 {chartData.comparePercent >= 0 ? '+' : ''}{chartData.comparePercent.toFixed(1)}%
               </div>
             </div>
-            <div className="analysis-card">
-              <div className="analysis-card-label">净资产</div>
-              <div className={`analysis-card-value ${initialBalance + totalIncome - totalExpense >= 0 ? 'income' : 'expense'}`}>
-                {(initialBalance + totalIncome - totalExpense).toFixed(2)}
+            {netWorth !== null && (
+              <div className="analysis-card">
+                <div className="analysis-card-label">净资产</div>
+                <div className={`analysis-card-value ${netWorth >= 0 ? 'income' : 'expense'}`}>
+                  {netWorth.toFixed(2)}
+                </div>
+                <div className="analysis-card-change">
+                  bill 账户余额合计
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>

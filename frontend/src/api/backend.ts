@@ -21,6 +21,10 @@ export interface AccountInfo {
   /** 账户类型(如 cash/bank/credit),bill 的 account_type */
   type: string;
   icon?: string;
+  /** 当前余额(元,bill 云端返回;负债账户为负,所有账户求和 = 净资产;本地后端无此概念) */
+  balance?: number;
+  /** 资产属性(asset/liability/dual),bill 的 asset_type */
+  assetType?: string;
 }
 
 export interface Category {
