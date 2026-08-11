@@ -1322,6 +1322,41 @@ body {
   font-weight: 600;
 }
 
+/* 可折叠区块:header 整行可点击 + 箭头指示(展开时旋转 90°) */
+.settings-section-header-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+}
+
+.settings-section-header-toggle:hover {
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.settings-caret {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.settings-caret.open {
+  transform: rotate(90deg);
+}
+
+/* 移动端:设置区块 body 内表单控件统一行距(窄屏不拥挤) */
+@media (max-width: 768px) {
+  .settings-section-body .form-group {
+    margin-bottom: 14px;
+  }
+  .settings-section-body .form-group .form-label {
+    margin-bottom: 6px;
+  }
+}
+
 .settings-section-body {
   padding: 16px;
 }

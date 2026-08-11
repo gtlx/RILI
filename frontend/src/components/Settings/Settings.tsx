@@ -42,6 +42,13 @@ export const Settings: React.FC = () => {
   const [generating, setGenerating] = useState(false);
 
   const [auditLogs, setAuditLogs] = useState<import('../../api/backend').TransactionAudit[]>([]);
+  // ── 低频区块折叠(默认收起:周期交易/笔记 Git 同步/交易审计日志) ──
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
+    recurring: true,
+    notesGit: true,
+    audit: true,
+  });
+  const toggleSection = (key: string) => setCollapsed(c => ({ ...c, [key]: !c[key] }));
   // ── 记账后端(bill 云端)配置 ──
   const [billMode, setBillMode] = useState<'bill' | 'local'>(isBillBackendEnabled() ? 'bill' : 'local');
   const [billBaseUrl, setBillBaseUrl] = useState(getBillBaseUrl());
@@ -274,33 +281,6 @@ export const Settings: React.FC = () => {
 
   return (
     <div>
-      <div className="settings-section">
-        <div className="settings-section-header">日历插件</div>
-        <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
-            启用/禁用日历插件，可显示农历和节假日信息
-          </p>
-          {plugins.map(plugin => (
-            <div key={plugin.name} className="settings-item">
-              <div>
-                <div className="settings-item-label">
-                  {plugin.name === 'lunar' ? '农历显示' : '节假日显示'}
-                </div>
-                <div className="settings-item-desc">
-                  {plugin.name === 'lunar' 
-                    ? '显示公历对应的农历日期、节气、生肖' 
-                    : '显示中国传统节日和法定节假日'}
-                </div>
-              </div>
-              <div 
-                className={`toggle ${plugin.enabled ? 'active' : ''}`}
-                onClick={() => togglePlugin(plugin.name)}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="settings-section">
         <div className="settings-section-header">外观设置</div>
         <div className="settings-section-body">
@@ -641,7 +621,38 @@ export const Settings: React.FC = () => {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-header">周期交易</div>
+        <div className="settings-section-header">日历插件</div>
+        <div className="settings-section-body">
+          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+            启用/禁用日历插件，可显示农历和节假日信息
+          </p>
+          {plugins.map(plugin => (
+            <div key={plugin.name} className="settings-item">
+              <div>
+                <div className="settings-item-label">
+                  {plugin.name === 'lunar' ? '农历显示' : '节假日显示'}
+                </div>
+                <div className="settings-item-desc">
+                  {plugin.name === 'lunar' 
+                    ? '显示公历对应的农历日期、节气、生肖' 
+                    : '显示中国传统节日和法定节假日'}
+                </div>
+              </div>
+              <div 
+                className={`toggle ${plugin.enabled ? 'active' : ''}`}
+                onClick={() => togglePlugin(plugin.name)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-header settings-section-header-toggle" onClick={() => toggleSection('recurring')}>
+          <span>周期交易</span>
+          <span className={`settings-caret ${collapsed.recurring ? '' : 'open'}`}>▸</span>
+        </div>
+        {!collapsed.recurring && (
         <div className="settings-section-body">
           <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
             设置周期发生的收入/支出规则，可一键生成指定日期范围内的交易记录
@@ -765,10 +776,15 @@ export const Settings: React.FC = () => {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-header">笔记 Git 同步</div>
+        <div className="settings-section-header settings-section-header-toggle" onClick={() => toggleSection('notesGit')}>
+          <span>笔记 Git 同步</span>
+          <span className={`settings-caret ${collapsed.notesGit ? '' : 'open'}`}>▸</span>
+        </div>
+        {!collapsed.notesGit && (
         <div className="settings-section-body">
           <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
             将笔记目录初始化为 Git 仓库，支持版本历史管理和推送到远程仓库
@@ -813,10 +829,15 @@ export const Settings: React.FC = () => {
             }}>拉取</button>
           </div>
         </div>
+        )}
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-header">交易审计日志</div>
+        <div className="settings-section-header settings-section-header-toggle" onClick={() => toggleSection('audit')}>
+          <span>交易审计日志</span>
+          <span className={`settings-caret ${collapsed.audit ? '' : 'open'}`}>▸</span>
+        </div>
+        {!collapsed.audit && (
         <div className="settings-section-body">
           <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
             记录每笔交易的创建、修改、删除操作及变更前后的数据快照
@@ -870,6 +891,7 @@ export const Settings: React.FC = () => {
             ))}
           </div>
         </div>
+        )}
       </div>
 
       <div className="settings-section">
@@ -878,7 +900,7 @@ export const Settings: React.FC = () => {
           <div className="settings-item">
             <div>
               <div className="settings-item-label">RiLi 日历记账笔记</div>
-              <div className="settings-item-desc">版本 0.4.0</div>
+              <div className="settings-item-desc">版本 0.5.1</div>
             </div>
           </div>
           <div className="settings-item">
