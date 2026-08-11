@@ -493,8 +493,8 @@ body {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  /* 固定行高:格子不随容器高度拉伸(用户要求固定大小);内容多时靠字号与截断处理 */
-  grid-template-rows: auto repeat(6, 88px);
+  /* 有下限的自适应行高:正常格子固定 88px 整齐;内容多(节日+农历+收支+待办)时自动变高,不裁剪 */
+  grid-template-rows: auto repeat(6, minmax(88px, auto));
   gap: 6px;
   padding: 0 12px 12px;
 }
@@ -542,8 +542,7 @@ body {
   outline: none;
   display: flex;
   flex-direction: column;
-  /* 固定高度下内容多时防溢出,靠内部字号缩放与截断呈现 */
-  overflow: hidden;
+  /* 内容多时允许格子随 minmax(auto) 变高,不裁剪(配合日历网格的有下限自适应行高) */
 }
 
 .calendar-day:hover {
@@ -658,6 +657,9 @@ body {
   font-family: var(--font-mono);
   line-height: 1.5;
   padding-top: 4px;
+  /* 内容极端多(节日+节气+农历+收支)时优先压缩金额区,防溢出裁剪 */
+  flex-shrink: 1;
+  min-height: 0;
 }
 
 .calendar-day-amounts .amount {
@@ -855,22 +857,35 @@ body {
 /* 移动端:日历格子与周视图自适应压缩 */
 @media (max-width: 768px) {
   .calendar-grid {
-    /* 移动端固定行高(同桌面,不随容器拉伸) */
-    grid-template-rows: auto repeat(6, 56px);
+    /* 有下限自适应行高:正常 66px 整齐;内容多自动变高不裁剪 */
+    grid-template-rows: auto repeat(6, minmax(66px, auto));
     gap: 3px;
     padding: 0 6px 6px;
   }
   .calendar-day {
-    min-height: 56px;
+    min-height: 66px;
     padding: 4px;
     border-radius: 8px;
   }
+  .calendar-day-top {
+    flex-shrink: 0;
+  }
+  .calendar-day-plugin {
+    flex-shrink: 1;
+    min-height: 0;
+    gap: 2px;
+  }
   .calendar-day-amounts {
-    font-size: 9px;
+    font-size: 8px;
     gap: 4px;
+    padding-top: 2px;
+    line-height: 1.4;
+    /* 空间不足时优先压缩金额区(收支数字非关键信息) */
+    flex-shrink: 1;
+    min-height: 0;
   }
   .plugin-badge {
-    font-size: 9px;
+    font-size: 8px;
     padding: 0 4px;
   }
   .week-view {
