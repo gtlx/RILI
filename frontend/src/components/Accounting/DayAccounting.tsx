@@ -12,11 +12,13 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
   const {
     transactions, loadTransactions,
     categories, loadCategories, addTransaction, updateTransaction, deleteTransaction, addCategory,
+    accounts, loadAccounts,
   } = useAppStore();
 
   useEffect(() => {
     loadCategories();
-  }, [loadCategories]);
+    loadAccounts();
+  }, [loadCategories, loadAccounts]);
 
   useEffect(() => {
     loadTransactions(currentDate, currentDate);
@@ -31,6 +33,17 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
   const [category, setCategory] = useState('');
   const [txNote, setTxNote] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  /** 记账账户 id('' = 未选择,保存时不传,由后端用默认账户) */
+  const [accountId, setAccountId] = useState<number | ''>('');
+
+  // 账户列表就绪且尚未选择时:默认选设置页配置的 bill_default_account_id,否则第一个账户
+  useEffect(() => {
+    if (accountId === '' && accounts.length > 0) {
+      const cfgId = localStorage.getItem('bill_default_account_id');
+      const match = cfgId ? accounts.find(a => String(a.id) === cfgId) : undefined;
+      setAccountId(match ? match.id : accounts[0].id);
+    }
+  }, [accounts, accountId]);
 
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -51,10 +64,20 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
       if (duplicate && !confirm('检测到与已有记录重复，是否继续保存？')) return;
     }
     try {
+      const base = {
+        date: currentDate, amount: numAmount, transaction_type: txType,
+        category, note: txNote || undefined, version: 1, is_deleted: false,
+        // 账户透传:选了账户带上,否则后端走默认账户(本地后端忽略该字段)
+        ...(accountId !== '' ? { account_id: accountId } : {}),
+      };
       if (editingId) {
-        await updateTransaction({ id: editingId, date: currentDate, amount: numAmount, transaction_type: txType, category, note: txNote || undefined, version: 1, is_deleted: false });
+        await updateTransaction({ id: editingId, ...base });
       } else {
-        await addTransaction({ date: currentDate, amount: numAmount, transaction_type: txType, category, note: txNote || undefined, version: 1, is_deleted: false });
+        await addTransaction(base);
+        // 新增成功后记住本次选择的账户,作为下次记账默认(与设置页 bill_default_account_id 同步)
+        if (accountId !== '') {
+          try { localStorage.setItem('bill_default_account_id', String(accountId)); } catch { /* 忽略存储失败 */ }
+        }
       }
       resetForm();
       await loadTransactions(currentDate, currentDate);
@@ -66,6 +89,8 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
     setAmount(String(t.amount));
     setCategory(t.category);
     setTxNote(t.note || '');
+    // 编辑回显账户:优先该记录原账户,否则保持当前默认
+    setAccountId(t.account_id ?? (accountId === '' ? '' : accountId));
     setEditingId(t.id ?? null);
   };
 
@@ -135,6 +160,21 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
         <div className="form-group">
           <input type="number" className="input" style={{ width: '100%' }} value={amount} onChange={e => setAmount(e.target.value)} placeholder="金额" />
         </div>
+
+        {accounts.length > 0 && (
+          <div className="form-group">
+            <select
+              className="select"
+              style={{ width: '100%' }}
+              value={accountId}
+              onChange={e => setAccountId(e.target.value ? Number(e.target.value) : '')}
+              title="记账账户"
+            >
+              <option value="">默认账户</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
+        )}
 
         <div className="form-group">
           <div style={{ display: 'flex', gap: '8px' }}>

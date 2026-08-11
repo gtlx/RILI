@@ -8,17 +8,23 @@ import { Settings } from './components/Settings/Settings';
 import { useAppStore } from './stores/appStore';
 import './styles.css';
 
-const isMobile = () => window.innerWidth <= 768;
-
 function App() {
   const { currentView, setCurrentView, setSelectedDate, loadTransactions, loadTheme, detailDate, setDetailDate } = useAppStore();
   const [showDateModal, setShowDateModal] = useState(false);
   const [modalDate, setModalDate] = useState<Date>(new Date());
-  const [splashDone, setSplashDone] = useState(false);
+  /** 启动 splash 三态:showing(展示)→ leaving(淡出)→ done(进入主界面);无需点击,延时自动进入 */
+  const [splashState, setSplashState] = useState<'showing' | 'leaving' | 'done'>('showing');
 
   useEffect(() => {
     loadTheme();
   }, [loadTheme]);
+
+  // 启动界面免点击:展示 1.3s 后淡出,0.3s 后进入主界面;用户点击可提前进入
+  useEffect(() => {
+    const t1 = setTimeout(() => setSplashState('leaving'), 1300);
+    const t2 = setTimeout(() => setSplashState('done'), 1600);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
 
   useEffect(() => {
     const handleBack = (e: Event) => {
@@ -49,7 +55,7 @@ function App() {
     setShowDateModal(true);
   };
 
-const handleGoToToday = () => {
+  const handleGoToToday = () => {
     const today = new Date();
     setSelectedDate(today);
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -118,9 +124,9 @@ const handleGoToToday = () => {
     )}
   ];
 
-  if (!splashDone) {
+  if (splashState !== 'done') {
     return (
-      <div className="splash" onClick={() => setSplashDone(true)}>
+      <div className={`splash ${splashState === 'leaving' ? 'splash-leaving' : ''}`} onClick={() => setSplashState('done')}>
         <div className="splash-content">
           <div className="splash-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="64" height="64">
@@ -134,7 +140,7 @@ const handleGoToToday = () => {
           </div>
           <h1 className="splash-title">RILI</h1>
           <p className="splash-subtitle">日历 · 记账 · 笔记</p>
-          <p className="splash-tip">点击任意处开始</p>
+          <p className="splash-tip">正在进入...</p>
         </div>
       </div>
     );

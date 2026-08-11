@@ -5,11 +5,22 @@ export interface Transaction {
   transaction_type: 'income' | 'expense';
   category: string;
   note?: string;
+  /** 记账账户 id(bill 云端模式:支出→from_account_id / 收入→to_account_id;不传则用默认账户) */
+  account_id?: number;
   created_at?: string;
   updated_at?: string;
   version?: number;
   is_deleted?: boolean;
   checksum?: string;
+}
+
+/** 账户信息(记账界面「账户」下拉用;bill 云端返回真实账户,本地后端返回默认/空) */
+export interface AccountInfo {
+  id: number;
+  name: string;
+  /** 账户类型(如 cash/bank/credit),bill 的 account_type */
+  type: string;
+  icon?: string;
 }
 
 export interface Category {
@@ -104,6 +115,9 @@ export interface BackendAdapter {
   // Categories
   getCategories(categoryType: string): Promise<Category[]>;
   addCategory(category: Category): Promise<number>;
+
+  // Accounts
+  getAccounts(): Promise<AccountInfo[]>;
 
   // Notes
   saveNote(date: string, content: string): Promise<void>;

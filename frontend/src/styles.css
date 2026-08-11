@@ -464,7 +464,12 @@ body {
   flex: 1;
   text-align: center;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: var(--primary-gradient-soft);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .calendar-header-right {
@@ -477,17 +482,19 @@ body {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: auto repeat(6, minmax(90px, 1fr));
+  grid-template-rows: auto repeat(6, minmax(88px, 1fr));
+  gap: 6px;
+  padding: 0 12px 12px;
 }
 
 .calendar-weekday-row {
   grid-column: 1 / -1;
   display: flex;
   justify-content: space-around;
-  padding: 4px;
+  padding: 6px 4px;
   background: var(--card-bg-solid);
   border-radius: var(--radius);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   border: 1px solid var(--border);
 }
 
@@ -498,20 +505,26 @@ body {
   color: var(--text-secondary);
   font-size: 12px;
   width: 14.28%;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
+}
+
+/* 周末列高亮(周日在左列,周六在右列) */
+.calendar-weekday.is-weekend {
+  color: var(--primary);
+  font-weight: 600;
+  background: var(--primary-soft);
 }
 
 .calendar-day {
-  min-height: 100px;
+  min-height: 88px;
   border: 1px solid var(--border);
-  border-top: none;
-  border-left: none;
-  padding: 6px;
+  border-radius: var(--radius);
+  padding: 6px 8px;
   cursor: pointer;
-  transition: background var(--transition);
+  transition: all var(--transition);
   /* 日历格子用实底,避免半透明透底 */
   background: var(--card-bg-solid);
+  box-shadow: 0 1px 2px rgba(16, 185, 129, 0.04);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   outline: none;
@@ -521,6 +534,10 @@ body {
 
 .calendar-day:hover {
   background: var(--day-hover, #ECFDF5);
+  border-color: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+  z-index: 1;
 }
 
 .calendar-day:hover .calendar-day-number {
@@ -531,22 +548,29 @@ body {
   box-shadow: inset 0 0 0 2px var(--primary);
 }
 
+/* 非当月格子弱化:降低不透明度(含农历徽章一并弱化) */
 .calendar-day.other-month {
   background: var(--day-other-bg, #F3F4F6);
   color: var(--day-other-color, #9CA3AF);
+  opacity: 0.6;
 }
 
 .calendar-day.other-month .calendar-day-number {
   color: var(--day-other-color, #9CA3AF);
 }
 
+/* 今日格:薄荷绿渐变底 + 白字,醒目但不刺眼 */
 .calendar-day.today {
-  background: var(--day-today-bg, #ECFDF5);
-  border: 2px solid var(--primary);
-  border-radius: 8px;
-  margin: -1px;
-  z-index: 1;
+  background: var(--primary-gradient-soft);
+  border-color: transparent;
+  color: #FFFFFF;
   position: relative;
+  box-shadow: var(--shadow-lg);
+}
+
+.calendar-day.today:hover {
+  background: var(--primary-gradient-soft);
+  border-color: transparent;
 }
 
 .calendar-day-top {
@@ -555,12 +579,13 @@ body {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  position: relative;
 }
 
 .calendar-day-number {
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
-  line-height: 1;
+  line-height: 1.4;
 }
 
 .calendar-day-markers {
@@ -570,12 +595,13 @@ body {
 }
 
 .calendar-day.today .calendar-day-number {
-  color: var(--primary);
+  color: #FFFFFF;
 }
 
+/* 有笔记小圆点(今日渐变底上换白点,保证可见) */
 .calendar-marker {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
 }
 
@@ -583,6 +609,7 @@ body {
   background: var(--primary);
 }
 
+/* 收支圆点:记账分析页 records 视图仍在使用(月历格子已改为金额小字) */
 .calendar-marker.expense {
   background: var(--expense);
 }
@@ -591,7 +618,49 @@ body {
   background: var(--income);
 }
 
-/* Week view */
+.calendar-day.today .calendar-marker.note {
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
+}
+
+/* 当日收支金额小字(吸底展示,收入绿/支出红) */
+.calendar-day-amounts {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  padding-top: 4px;
+}
+
+.calendar-day-amounts .amount {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.calendar-day-amounts .amount.income {
+  color: var(--income);
+}
+
+.calendar-day-amounts .amount.expense {
+  color: var(--expense);
+}
+
+/* 今日渐变底上的金额用浅色变体,保证可读 */
+.calendar-day.today .calendar-day-amounts .amount.income {
+  color: #D1FAE5;
+}
+
+.calendar-day.today .calendar-day-amounts .amount.expense {
+  color: #FECACA;
+}
+
+/* Week view(与月视图同风格:实底卡片 + 圆角 + hover 浮动) */
 .week-view {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -600,19 +669,21 @@ body {
 }
 
 .week-day {
-  background: var(--card-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--card-bg-solid);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  box-shadow: 0 1px 2px rgba(16, 185, 129, 0.04);
   padding: 12px;
   min-height: 200px;
   cursor: pointer;
-  transition: background var(--transition);
+  transition: all var(--transition);
 }
 
 .week-day:hover {
   background: var(--day-hover, #ECFDF5);
+  border-color: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
 }
 
 .week-day:hover .week-day-date {
@@ -637,8 +708,44 @@ body {
   font-weight: 600;
 }
 
+.week-day.today {
+  border: 2px solid var(--primary);
+  background: var(--day-today-bg, #ECFDF5);
+}
+
 .week-day.today .week-day-date {
   color: var(--primary);
+}
+
+/* 移动端:日历格子与周视图自适应压缩 */
+@media (max-width: 768px) {
+  .calendar-grid {
+    grid-template-rows: auto repeat(6, minmax(56px, 1fr));
+    gap: 3px;
+    padding: 0 6px 6px;
+  }
+  .calendar-day {
+    min-height: 56px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  .calendar-day-amounts {
+    font-size: 9px;
+    gap: 4px;
+  }
+  .plugin-badge {
+    font-size: 9px;
+    padding: 0 4px;
+  }
+  .week-view {
+    gap: 4px;
+    padding: 8px;
+    overflow-x: auto;
+  }
+  .week-day {
+    padding: 8px;
+    min-height: 0;
+  }
 }
 
 /* Transaction list */
@@ -1308,19 +1415,21 @@ body {
   background: #D1D5DB;
 }
 
-/* Calendar Plugin Styles */
+/* Calendar Plugin Styles(徽章胶囊化,与收支金额行错开不重叠) */
 .calendar-day-plugin {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .plugin-badge {
   font-size: 10px;
-  padding: 1px 4px;
-  border-radius: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   white-space: nowrap;
   overflow: hidden;
@@ -1389,6 +1498,13 @@ body {
   z-index: 9999;
   cursor: pointer;
   animation: splashFadeIn 0.3s ease;
+  transition: opacity 0.3s ease;
+}
+
+/* 淡出阶段:自动进入主界面前的过渡(免点击) */
+.splash.splash-leaving {
+  opacity: 0;
+  pointer-events: none;
 }
 
 @keyframes splashFadeIn {

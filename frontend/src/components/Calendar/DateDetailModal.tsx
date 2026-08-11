@@ -157,15 +157,15 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
               <div className="date-info-card">
                 <div className="date-info-row">
                   <span className="date-info-label">收入</span>
-                  <span className="date-info-value" style={{ color: '#10B981' }}>+{dayIncome.toFixed(2)}</span>
+                  <span className="date-info-value" style={{ color: 'var(--income)' }}>+{dayIncome.toFixed(2)}</span>
                 </div>
                 <div className="date-info-row">
                   <span className="date-info-label">支出</span>
-                  <span className="date-info-value" style={{ color: '#EF4444' }}>-{dayExpense.toFixed(2)}</span>
+                  <span className="date-info-value" style={{ color: 'var(--expense)' }}>-{dayExpense.toFixed(2)}</span>
                 </div>
                 <div className="date-info-row">
                   <span className="date-info-label">结余</span>
-                  <span className="date-info-value" style={{ color: dayIncome - dayExpense >= 0 ? '#10B981' : '#EF4444' }}>
+                  <span className="date-info-value" style={{ color: dayIncome - dayExpense >= 0 ? 'var(--income)' : 'var(--expense)' }}>
                     {(dayIncome - dayExpense).toFixed(2)}
                   </span>
                 </div>

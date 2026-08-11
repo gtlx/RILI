@@ -120,14 +120,14 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
         </div>
         <div className="calendar-grid">
           <div className="calendar-weekday-row">
-            {weekdays.map(w => (
-              <div key={w} className="calendar-weekday">{w}</div>
+            {weekdays.map((w, i) => (
+              <div key={w} className={`calendar-weekday ${i === 0 || i === 6 ? 'is-weekend' : ''}`}>{w}</div>
             ))}
           </div>
           {days.map((d, i) => {
             const dateTransactions = getTransactionsForDate(d);
-            const hasIncome = dateTransactions.some(t => t.transaction_type === 'income');
-            const hasExpense = dateTransactions.some(t => t.transaction_type === 'expense');
+            const incomeTotal = dateTransactions.filter(t => t.transaction_type === 'income').reduce((s, t) => s + t.amount, 0);
+            const expenseTotal = dateTransactions.filter(t => t.transaction_type === 'expense').reduce((s, t) => s + t.amount, 0);
             const hasNote = hasNoteOnDate(d);
             const isToday = isSameDay(d, today);
             const isCurrentMonth = isSameMonth(d, currentDate);
@@ -149,8 +149,6 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                   {isCurrentMonth && (
                     <div className="calendar-day-markers">
                       {hasNote && <span className="calendar-marker note" title="有笔记" />}
-                      {hasIncome && <span className="calendar-marker income" title="有收入" />}
-                      {hasExpense && <span className="calendar-marker expense" title="有支出" />}
                     </div>
                   )}
                 </div>
@@ -169,6 +167,12 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                         {result.content || result.badge}
                       </div>
                     ))}
+                  </div>
+                )}
+                {isCurrentMonth && (incomeTotal > 0 || expenseTotal > 0) && (
+                  <div className="calendar-day-amounts" title={`收入 +${incomeTotal.toFixed(2)} / 支出 -${expenseTotal.toFixed(2)}`}>
+                    {expenseTotal > 0 && <span className="amount expense">-{expenseTotal.toFixed(2)}</span>}
+                    {incomeTotal > 0 && <span className="amount income">+{incomeTotal.toFixed(2)}</span>}
                   </div>
                 )}
               </div>
@@ -245,14 +249,14 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                 <div className="week-day-content">
                   {dateTransactions.slice(0, 3).map((t, j) => (
                     <div key={j} style={{ fontSize: '12px', marginBottom: '4px' }}>
-                      <span style={{ color: t.transaction_type === 'income' ? '#10B981' : '#EF4444' }}>
+                      <span style={{ color: t.transaction_type === 'income' ? 'var(--income)' : 'var(--expense)' }}>
                         {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
                       </span>
-                      <span style={{ color: '#6B7280', marginLeft: '4px' }}>{t.category}</span>
+                      <span style={{ color: 'var(--text-secondary)', marginLeft: '4px' }}>{t.category}</span>
                     </div>
                   ))}
                   {dateTransactions.length > 3 && (
-                    <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                       +{dateTransactions.length - 3} 更多
                     </div>
                   )}

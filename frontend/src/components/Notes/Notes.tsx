@@ -19,7 +19,8 @@ export const Notes: React.FC = () => {
   const handleSelectNote = async (date: string) => {
     setSelectedNote(date);
     await loadNote(date);
-    setEditContent(currentNoteContent);
+    // loadNote 已异步更新 store,这里从最新 state 读取(不能用组件闭包里的旧值)
+    setEditContent(useAppStore.getState().currentNoteContent);
     setIsEditing(false);
   };
 

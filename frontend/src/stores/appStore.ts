@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { backend, getAccountingBackend } from '../api';
-import type { Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncMetadata, SyncConfig, ViewType, Theme } from '../api/backend';
+import type { Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncMetadata, ViewType, Theme, AccountInfo } from '../api/backend';
 export type { WeeklyAnalysis, MonthlyAnalysis, Theme };
 
 /**
@@ -41,6 +41,9 @@ interface AppState {
   categories: { income: Category[]; expense: Category[] };
   loadCategories: () => Promise<void>;
   addCategory: (category: Category) => Promise<void>;
+  /** 记账账户列表(记账界面「账户」下拉;bill 云端返回真实账户,本地后端默认/空) */
+  accounts: AccountInfo[];
+  loadAccounts: () => Promise<void>;
   notes: Note[];
   loadNotes: () => Promise<void>;
   currentNoteContent: string;
@@ -149,6 +152,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   addCategory: async (category) => {
     await accountingBackend().addCategory(category);
     await get().loadCategories();
+  },
+
+  accounts: [],
+  loadAccounts: async () => {
+    try {
+      const accounts = await accountingBackend().getAccounts();
+      set({ accounts, accountingError: null });
+    } catch (e) {
+      // bill 不可达:记录错误供界面提示,账户下拉留空(不阻断记账,保存时后端会走默认账户)
+      console.warn('[appStore] loadAccounts 失败:', e);
+      set({ accounts: [], accountingError: String(e) });
+    }
   },
 
   notes: [],

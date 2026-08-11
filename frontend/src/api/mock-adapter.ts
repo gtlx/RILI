@@ -1,4 +1,4 @@
-import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule } from './backend';
+import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule, AccountInfo } from './backend';
 
 export class MockBackend implements BackendAdapter {
   private txns: Transaction[] = [];
@@ -34,6 +34,11 @@ export class MockBackend implements BackendAdapter {
   async getTransactionsSinceVersion(v: number): Promise<Transaction[]> { return this.txns.filter(t => (t.version || 0) > v); }
   async getCategories(t: string): Promise<Category[]> { return this.categories.filter(c => c.category_type === t); }
   async addCategory(c: Category): Promise<number> { this.categories.push(c); return this.categories.length; }
+
+  // 本地(Mock)记账:无账户概念,返回单条默认账户供记账界面下拉,记账时 account_id 被忽略
+  async getAccounts(): Promise<AccountInfo[]> {
+    return [{ id: 1, name: '默认账户', type: 'cash' }];
+  }
   async saveNote(date: string, content: string): Promise<void> {
     this.notes.set(date, content);
     const existing = this.noteMeta.findIndex(n => n.date === date);
@@ -104,17 +109,17 @@ export class MockBackend implements BackendAdapter {
   async getSyncMetadata(): Promise<SyncMetadata> { return { last_sync_version: 0, last_sync_time: '', checksum: '' }; }
   // ── 系统数据: JSON ──
   async exportSystemJson(): Promise<string> { return JSON.stringify({ transactions: this.txns, categories: this.categories }); }
-  async importSystemJson(j: string, m: boolean): Promise<void> {}
+  async importSystemJson(_j: string, _m: boolean): Promise<void> {}
   async validateDataIntegrity(): Promise<boolean> { return true; }
   async computeFullChecksum(): Promise<string> { return ''; }
 
   // ── 记账: CSV ──
-  async exportAccountingCsv(s: string, e: string): Promise<string> { return 'date,type,amount,category,note'; }
-  async importAccountingCsv(c: string): Promise<number> { return 0; }
+  async exportAccountingCsv(_s: string, _e: string): Promise<string> { return 'date,type,amount,category,note'; }
+  async importAccountingCsv(_c: string): Promise<number> { return 0; }
 
   // ── 笔记: ZIP ──
   async exportNotesZip(): Promise<string> { return ''; }
-  async importNotesZip(b: string): Promise<number> { return 0; }
+  async importNotesZip(_b: string): Promise<number> { return 0; }
 
   // ── 周期交易 ──
   async addRecurringRule(r: RecurringRule): Promise<number> { this.recurringRules.push({ ...r, id: this.recurringRules.length + 1 }); return this.recurringRules.length; }

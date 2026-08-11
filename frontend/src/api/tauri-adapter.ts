@@ -1,4 +1,4 @@
-import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule } from './backend';
+import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule, AccountInfo } from './backend';
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   try {
@@ -20,6 +20,9 @@ export class TauriBackend implements BackendAdapter {
 
   async getCategories(t: string): Promise<Category[]> { return invoke('get_categories', { categoryType: t }); }
   async addCategory(c: Category): Promise<number> { return invoke('add_category', { category: c }); }
+
+  // 本地(Tauri/Rust)记账暂不维护账户,返回空列表(记账界面不显示账户下拉,保持原有行为)
+  async getAccounts(): Promise<AccountInfo[]> { return []; }
 
   async saveNote(d: string, c: string): Promise<void> { return invoke('save_note', { date: d, content: c }); }
   async getNote(d: string): Promise<string | null> { return invoke('get_note', { date: d }); }

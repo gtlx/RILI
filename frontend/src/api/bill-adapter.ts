@@ -25,7 +25,7 @@
  *          默认 http://localhost:3000,部署到服务器后改为服务器地址。
  */
 
-import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule } from './backend';
+import { BackendAdapter, Transaction, Category, Note, WeeklyAnalysis, MonthlyAnalysis, SyncConfig, SyncMetadata, RecurringRule, AccountInfo } from './backend';
 
 /* ────────────────────── 配置与常量 ────────────────────── */
 
@@ -108,20 +108,17 @@ interface CreateBillRequest {
   note?: string;
 }
 
-/** bill 月度报表 /statistics/report 响应 */
-interface BillMonthlyReport {
-  current_expense: number;
-  current_income: number;
-  previous_expense: number;
-  previous_income: number;
-  expense_change_percent: number;
-  daily_average: number;
-  weekday_spending: number;
-  weekend_spending: number;
-  hourly_distribution: [number, number][];
-  top_categories: { category_id: number; category_name: string; total_cents: number; count: number }[];
-  bill_count: number;
-}
+/**
+ * bill 月度报表端点 GET /statistics/report?year=&month= 的响应契约
+ * (当前月度分析走 /bills 本地聚合,暂未调用该端点,仅记录契约供后续接入):
+ *   current_expense / current_income: 当月收支(元)
+ *   previous_expense / previous_income: 上月收支(元)
+ *   expense_change_percent: 支出环比百分比
+ *   daily_average / weekday_spending / weekend_spending: 日均/工作日/周末支出
+ *   hourly_distribution: [小时, 金额] 二元组数组
+ *   top_categories: [{ category_id, category_name, total_cents, count }]
+ *   bill_count: 账单条数
+ */
 
 /* ────────────────────── 工具函数 ────────────────────── */
 
@@ -288,19 +285,53 @@ export class BillBackendAdapter implements BackendAdapter {
     return res.json();
   }
 
-  /** 登录并拉取账户列表(记账必须指定账户);可指定默认账户 id,否则取第一个 */
-  private async ensureAccounts(): Promise<BillAccount> {
+  /** 拉取并缓存 bill 账户列表(记账必须指定账户) */
+  private async ensureAccountsList(): Promise<BillAccount[]> {
     if (!this.accounts) {
       this.accounts = await this.request<BillAccount[]>('/api/v1/accounts');
     }
-    if (!this.accounts || this.accounts.length === 0) {
+    return this.accounts;
+  }
+
+  /** 取记账默认账户:可指定默认账户 id,否则取第一个 */
+  private async ensureAccounts(): Promise<BillAccount> {
+    const list = await this.ensureAccountsList();
+    if (!list || list.length === 0) {
       throw new Error('bill 中还没有账户,请先在 bill 里创建账户后再记账');
     }
     const cfgId = lsGet(LS.defaultAccountId);
     const preferred = cfgId
-      ? this.accounts.find(a => String(a.id) === cfgId)
+      ? list.find(a => String(a.id) === cfgId)
       : undefined;
-    return preferred || this.accounts[0];
+    return preferred || list[0];
+  }
+
+  /**
+   * 账户列表(记账界面「账户」下拉用):
+   * 返回 bill 真实账户;拉取失败时抛错由调用方(界面)提示。
+   */
+  async getAccounts(): Promise<AccountInfo[]> {
+    const list = await this.ensureAccountsList();
+    return list.map(a => ({
+      id: a.id,
+      name: a.name,
+      type: a.account_type,
+      icon: a.icon,
+    }));
+  }
+
+  /**
+   * 记账账户解析:交易指定 account_id 时用它(找不到则回退默认),
+   * 未指定时用默认账户(设置页 bill_default_account_id 或第一个)。
+   */
+  private async resolveAccount(accountId?: number): Promise<BillAccount> {
+    if (accountId !== undefined && accountId !== null) {
+      const list = await this.ensureAccountsList();
+      const hit = list.find(a => a.id === accountId);
+      if (hit) return hit;
+      // 指定的账户不存在(可能已在 bill 删除)→ 回退默认账户,不阻断记账
+    }
+    return this.ensureAccounts();
   }
 
   /** 供设置页「测试连接」:验证服务器可达 + 账号正确,返回中文结果 */
@@ -316,7 +347,7 @@ export class BillBackendAdapter implements BackendAdapter {
   /* ────────── 交易:记账 / 查询(映射到 bill /bills) ────────── */
 
   async addTransaction(t: Transaction): Promise<number> {
-    const account = await this.ensureAccounts();
+    const account = await this.resolveAccount(t.account_id);
     const body: CreateBillRequest = {
       amount_cents: yuanToCents(t.amount),
       transaction_type: t.transaction_type,
@@ -336,7 +367,7 @@ export class BillBackendAdapter implements BackendAdapter {
 
   async updateTransaction(t: Transaction): Promise<void> {
     if (!t.id) throw new Error('更新账单缺少 id');
-    const account = await this.ensureAccounts();
+    const account = await this.resolveAccount(t.account_id);
     const body: CreateBillRequest = {
       amount_cents: yuanToCents(t.amount),
       transaction_type: t.transaction_type,
@@ -378,6 +409,8 @@ export class BillBackendAdapter implements BackendAdapter {
       amount: centsToYuan(b.amount_cents),
       transaction_type: b.transaction_type,
       category: categoryNameById(b.category_id),
+      // 回填记账账户:支出→from_account_id,收入→to_account_id(编辑时账户下拉可回显)
+      account_id: b.transaction_type === 'expense' ? b.from_account_id ?? undefined : b.to_account_id ?? undefined,
       note: b.note || undefined,
       created_at: b.created_at,
       updated_at: b.updated_at,
