@@ -38,6 +38,36 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
     loadTodos();
   }, [loadTodos]);
 
+  /**
+   * 移动端日历格子高度屏幕自适应(方案 B):
+   * 量 window.innerHeight,减去顶栏/日历header/星期行/底栏/上下padding/gap 等实际占用,
+   * 余量除以 6 行得到每行目标高度,写入 CSS 变量 --cal-row-h(移动端 minmax 的 max)。
+   * 桌面端不设(保持 88px 固定)。resize 时重算。
+   */
+  useEffect(() => {
+    const compute = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (!isMobile) {
+        document.documentElement.style.removeProperty('--cal-row-h');
+        return;
+      }
+      // 各区域实际高度(取不到用经验值兜底):
+      //   顶栏 ~48 / 日历 header ~60 / 星期行 ~30 / 底栏 ~64 / content padding 上下(16+88) / grid gap 6行×3
+      const topBar = document.querySelector('.top-bar')?.getBoundingClientRect().height ?? 48;
+      const calHeader = document.querySelector('.calendar-header')?.getBoundingClientRect().height ?? 60;
+      const weekdayRow = document.querySelector('.calendar-weekday-row')?.getBoundingClientRect().height ?? 30;
+      const bottomBar = document.querySelector('.bottom-tab-bar')?.getBoundingClientRect().height ?? 64;
+      const paddingTop = 16, paddingBottom = 88, gapTotal = 6 * 3;
+      const available = window.innerHeight - topBar - calHeader - weekdayRow - bottomBar - paddingTop - paddingBottom - gapTotal;
+      // 每行至少 66px(内容塞得下的下限);屏幕高时自动放大填满
+      const rowH = Math.max(66, Math.floor(available / 6));
+      document.documentElement.style.setProperty('--cal-row-h', `${rowH}px`);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, []);
+
   /** 待办索引:日期(或 MM-DD 年度重复) → 未完成待办数 */
   const todoIndex = useMemo(() => {
     const idx = new Map<string, { count: number; hasYearly: boolean }>();

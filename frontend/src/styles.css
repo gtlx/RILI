@@ -857,8 +857,9 @@ body {
 /* 移动端:日历格子与周视图自适应压缩 */
 @media (max-width: 768px) {
   .calendar-grid {
-    /* 有下限自适应行高:正常 66px 整齐;内容多自动变高不裁剪 */
-    grid-template-rows: auto repeat(6, minmax(66px, auto));
+    /* 有下限自适应行高:基础 66px;--cal-row-h 由 Calendar.tsx 按屏幕高度实测计算(填满可用空间);
+       内容多时 minmax 的 auto 继续撑高不裁剪 */
+    grid-template-rows: auto repeat(6, minmax(66px, var(--cal-row-h, 66px)));
     gap: 3px;
     padding: 0 6px 6px;
   }
@@ -869,6 +870,21 @@ body {
   }
   .calendar-day-top {
     flex-shrink: 0;
+    /* 移动端两行布局:标记点第一行、日期数字第二行(内容整体下移,格子顶部留白)
+       flex-wrap 让标记点换行,order 调换顺序:markers 先、number 后 */
+    flex-wrap: wrap;
+    gap: 2px 6px;
+    padding-top: 2px;
+  }
+  .calendar-day-top .calendar-day-number {
+    order: 2;
+  }
+  .calendar-day-top .calendar-day-markers {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+    /* 固定第一行高度:无标记时也占位,保证日期数字统一落在第二行 */
+    min-height: 8px;
   }
   .calendar-day-plugin {
     flex-shrink: 1;
@@ -1610,6 +1626,9 @@ body {
   gap: 4px;
   min-height: 0;
   overflow: hidden;
+  /* 格子自适应变高后:徽章区在日期与金额之间垂直居中分布,不贴顶不空荡 */
+  flex: 1;
+  justify-content: center;
 }
 
 .plugin-badge {
