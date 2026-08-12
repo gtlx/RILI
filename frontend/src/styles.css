@@ -883,7 +883,7 @@ body {
   .calendar-day-top {
     flex-shrink: 0;
   }
-  .calendar-day-plugin {
+  .calendar-day-line {
     flex-shrink: 1;
     min-height: 0;
     gap: 2px;
@@ -1615,17 +1615,16 @@ body {
 }
 
 /* Calendar Plugin Styles(徽章胶囊化,与收支金额行错开不重叠) */
-.calendar-day-plugin {
-  margin-top: 4px;
+.calendar-day-line {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   min-height: 0;
-  overflow: hidden;
-  /* 格子自适应变高后:徽章区在日期与金额之间垂直居中分布,不贴顶不空荡 */
-  flex: 1;
-  justify-content: center;
+  width: 100%;
+  /* 行内容自适应变高时随格子 flex 分布 */
+  flex-shrink: 1;
 }
 
 .plugin-badge {

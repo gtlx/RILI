@@ -253,28 +253,41 @@ export const Calendar: React.FC<CalendarProps> = ({ onDateClick }) => {
                     </div>
                   )}
                 </div>
-                {enabledPlugins.length > 0 && (
-                  <div className="calendar-day-plugin">
-                    {pluginManager.renderDay({
-                      date: d,
-                      isCurrentMonth,
-                      isToday
-                    }).map((result, idx) => {
-                      // 内容较长(如四字节日名)时缩字号,避免固定格子内溢出
-                      const text = result.content || result.badge || '';
-                      const long = text.length > 3 ? ' badge-long' : '';
-                      return (
-                        <div 
-                          key={idx} 
-                          className={`plugin-badge ${result.className || ''}${long}`}
-                          title={result.tooltip || ''}
-                        >
-                          {text}
+                {enabledPlugins.length > 0 && (() => {
+                  // 按行分类渲染:农历(第二行)/节日(第三行)/节气等其他(第四行)
+                  // className 约定:空或 lunar-month-start=农历;festival/holiday=节日;solar-term=节气
+                  const results = pluginManager.renderDay({ date: d, isCurrentMonth, isToday });
+                  const isLunar = (r: { className?: string }) => !r.className || r.className === 'lunar-month-start' || r.className.includes('lunar');
+                  const isFestival = (r: { className?: string }) => !!r.className && (r.className.includes('festival') || r.className.includes('holiday'));
+                  const isOther = (r: { className?: string }) => !!r.className && r.className.includes('solar');
+                  const rows = [
+                    results.filter(isLunar),
+                    results.filter(isFestival),
+                    results.filter(isOther),
+                  ];
+                  return (
+                    <>
+                      {rows.map((row, ri) => row.length > 0 ? (
+                        <div key={ri} className={`calendar-day-line line-${ri}`}>
+                          {row.map((result, idx) => {
+                            // 内容较长(如四字节日名)时缩字号,避免固定格子内溢出
+                            const text = result.content || result.badge || '';
+                            const long = text.length > 3 ? ' badge-long' : '';
+                            return (
+                              <div 
+                                key={idx} 
+                                className={`plugin-badge ${result.className || ''}${long}`}
+                                title={result.tooltip || ''}
+                              >
+                                {text}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      ) : null)}
+                    </>
+                  );
+                })()}
                 {isCurrentMonth && (incomeTotal > 0 || expenseTotal > 0) && (
                   <div className="calendar-day-amounts" title={`收入 +${incomeTotal.toFixed(2)} / 支出 -${expenseTotal.toFixed(2)}`}>
                     {expenseTotal > 0 && <span className="amount expense">-{expenseTotal.toFixed(2)}</span>}
