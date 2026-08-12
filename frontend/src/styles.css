@@ -669,7 +669,8 @@ body {
 
 /* 当日收支金额小字(吸底展示,收入绿/支出红) */
 .calendar-day-amounts {
-  margin-top: auto;
+  /* 金额紧跟底部信息区(农历/节日/节气行之后);吸底由 line-0 的 margin-top:auto 统一驱动,
+     此处不再设 auto,避免两个 auto 平分空间在农历与金额之间留空隙 */
   display: flex;
   justify-content: center;
   gap: 8px;
@@ -681,6 +682,11 @@ body {
   /* 内容极端多(节日+节气+农历+收支)时优先压缩金额区,防溢出裁剪 */
   flex-shrink: 1;
   min-height: 0;
+}
+
+/* 兜底:格子没有任何农历/节日/节气行时,金额仍吸底(否则会贴到日期下方) */
+.calendar-day:not(:has(.calendar-day-line)) .calendar-day-amounts {
+  margin-top: auto;
 }
 
 .calendar-day-amounts .amount {
@@ -1641,6 +1647,13 @@ body {
 /* 节日/节气行:与上一行小间距(略大于徽章内gap,保持层级清晰) */
 .calendar-day-line + .calendar-day-line {
   margin-top: 3px;
+}
+
+/* 信息区整体吸底:第一行(农历)推到底部,日期数字独立在上方;
+   后续行(节日/节气/金额)自然紧跟,格子底部信息自上而下:农历→节日→节气→金额 */
+.calendar-day-line.line-0 {
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .plugin-badge {
