@@ -8,7 +8,7 @@ const LUNAR_DAY_NAMES = ['初一', '初二', '初三', '初四', '初五', '初�
   '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
 
 // 复刻修复后 LunarPlugin.renderDay 的核心输出逻辑
-// (含 FESTIVAL_NAME_FIX 节日名规范化,须与 LunarPlugin.ts 保持一致)
+// (含 FESTIVAL_NAME_FIX 节日名规范化 + 节日双行:第一行农历日期,第二行节日名;须与 LunarPlugin.ts 保持一致)
 const FESTIVAL_NAME_FIX = { '七夕情人节': '七夕节' };
 function pluginRenderDay(year, month, day) {
   const lunar = lunarCalendar.solarToLunar(year, month, day);
@@ -16,9 +16,14 @@ function pluginRenderDay(year, month, day) {
   const lunarMonthName = lunar.lunarMonthName || LUNAR_MONTH_NAMES[lunar.lunarMonth] || '';
   const lunarDayName = LUNAR_DAY_NAMES[lunar.lunarDay - 1] || '';
   const festival = FESTIVAL_NAME_FIX[lunar.lunarFestival || ''] || lunar.lunarFestival || '';
-  const content = festival || (lunar.lunarDay === 1 ? lunarMonthName : lunarDayName);
+  // 第一行:农历日期(初一显示月份名,其余显示日名);节日当天仍保留农历日期(不再被节日名替代)
+  const lunarDateContent = lunar.lunarDay === 1 ? lunarMonthName : lunarDayName;
+  const contents = [lunarDateContent];
+  // 第二行:节日名(仅节日当天)
+  if (festival) contents.push(festival);
   return {
-    content,
+    contents,
+    // 节日时第二行是节日徽章,第一行保持农历样式(初一红字)
     className: festival ? 'festival' : lunar.lunarDay === 1 ? 'lunar-month-start' : '',
     lunarText: `${lunarMonthName}${lunarDayName}`,
     solarTerm: lunar.term || '',
@@ -43,13 +48,15 @@ let pass = 0, fail = 0;
 console.log('=== 传统节日验证(2026-2027) ===');
 for (const [y, m, d, expFest, expLunar] of cases) {
   const r = pluginRenderDay(y, m, d);
-  const okFest = r.content === expFest || (expFest === '' && r.className !== 'festival');
+  // 节日双行:contents[0]=农历日期(初一显示月份名),contents[1]=节日名(仅节日当天)
+  const hasFest = r.contents.includes(expFest);
+  const okFest = expFest !== '' ? hasFest : !r.contents.some(c => c !== r.contents[0]);
   const okLunar = r.lunarText === expLunar;
   const ok = okFest && okLunar;
   ok ? pass++ : fail++;
   console.log(
     `${ok ? 'PASS' : 'FAIL'}  ${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`.padEnd(28),
-    `节日[${r.content}] 期望[${expFest || '(无)'}]`, `农历[${r.lunarText}] 期望[${expLunar}]`,
+    `节日[${r.contents.join('/')}] 期望[${expFest || '(无)'}]`, `农历[${r.lunarText}] 期望[${expLunar}]`,
     r.solarTerm ? `节气[${r.solarTerm}]` : '',
     `class=${r.className || '(无)'}`
   );

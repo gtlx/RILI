@@ -76,18 +76,24 @@ export function createLunarPlugin(): CalendarPlugin {
 
       const results: PluginRenderResult[] = [];
 
-      // 节日当天优先显示节日名(如正月初一显示"春节"而非"正月");
-      // 初一无节日时显示月份名,其余显示日名(如"十五")
-      const lunarContent = lunar.lunarFestival
-        || (lunar.lunarDay === 1 ? lunar.lunarMonthName : lunar.lunarDayName);
-
-      const isFestival = !!lunar.lunarFestival;
+      // 节日当天:输出两行——第一行农历日期(如"正月初一"),第二行节日名(如"春节");
+      // 避免节日名替代农历日期导致看不出是农历哪一天
+      const festival = lunar.lunarFestival;
+      const lunarDateName = lunar.lunarDay === 1 ? lunar.lunarMonthName : lunar.lunarDayName;
 
       results.push({
-        content: lunarContent,
-        className: isFestival ? 'festival' : lunar.lunarDay === 1 ? 'lunar-month-start' : '',
-        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}${lunar.lunarFestival ? ', ' + lunar.lunarFestival : ''}`
+        content: lunarDateName,
+        className: lunar.lunarDay === 1 ? 'lunar-month-start' : '',
+        tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}${lunar.zodiac ? ', 生肖:' + lunar.zodiac : ''}${festival ? ', ' + festival : ''}`
       });
+
+      if (festival) {
+        results.push({
+          content: festival,
+          className: 'festival',
+          tooltip: `农历: ${lunar.lunarMonthName}${lunar.lunarDayName}, ${festival}`
+        });
+      }
 
       if (lunar.solarTerm) {
         results.push({
