@@ -294,6 +294,15 @@ body {
   outline: none;
 }
 
+/* 禁用态:表单未填完整时按钮不可点(如记账保存) */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+
 .btn-primary {
   /* 薄荷绿渐变按钮(bill button:from-emerald-500 to-teal-500) */
   background: var(--primary-gradient-soft);

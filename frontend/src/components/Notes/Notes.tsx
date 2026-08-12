@@ -26,15 +26,26 @@ export const Notes: React.FC = () => {
 
   const handleSave = async () => {
     if (selectedNote) {
-      await saveNote(selectedNote, editContent);
-      setIsEditing(false);
+      try {
+        await saveNote(selectedNote, editContent);
+        // saveNote 只刷新列表不更新 currentNoteContent,这里同步 store,
+        // 否则保存后预览(及再次点「编辑」)拿到的仍是修改前的内容
+        useAppStore.setState({ currentNoteContent: editContent });
+        setIsEditing(false);
+      } catch (e) {
+        alert('保存失败: ' + String(e));
+      }
     }
   };
 
   const handleDelete = async () => {
     if (selectedNote && confirm('确定删除这篇笔记吗？')) {
-      await deleteNote(selectedNote);
-      setSelectedNote(null);
+      try {
+        await deleteNote(selectedNote);
+        setSelectedNote(null);
+      } catch (e) {
+        alert('删除失败: ' + String(e));
+      }
     }
   };
 

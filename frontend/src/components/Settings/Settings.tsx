@@ -284,7 +284,7 @@ export const Settings: React.FC = () => {
       <div className="settings-section">
         <div className="settings-section-header">外观设置</div>
         <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             选择应用的主题外观
           </p>
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -332,7 +332,7 @@ export const Settings: React.FC = () => {
       <div className="settings-section">
         <div className="settings-section-header">记账后端</div>
         <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             记账数据存储位置:云端(bill 记账软件)或本地。切换后记账页面自动使用所选后端
           </p>
 
@@ -357,7 +357,7 @@ export const Settings: React.FC = () => {
                   onChange={e => setBillBaseUrl(e.target.value)}
                   placeholder="http://localhost:3000 或 https://your-server.com"
                 />
-                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   本地开发默认 localhost:3000;部署到服务器后填写服务器地址
                 </p>
               </div>
@@ -421,7 +421,7 @@ export const Settings: React.FC = () => {
               onChange={e => setSyncUrl(e.target.value)}
               placeholder="https://your-nextcloud.com/remote.php/dav/files/username"
             />
-            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
               支持 Nextcloud、OwnCloud 等 WebDAV 服务器
             </p>
           </div>
@@ -471,7 +471,7 @@ export const Settings: React.FC = () => {
           </div>
           
           {lastSyncTime && (
-            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '12px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '12px' }}>
               最后同步时间: {lastSyncTime}
             </p>
           )}
@@ -623,7 +623,7 @@ export const Settings: React.FC = () => {
       <div className="settings-section">
         <div className="settings-section-header">日历插件</div>
         <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             启用/禁用日历插件，可显示农历和节假日信息
           </p>
           {plugins.map(plugin => (
@@ -654,7 +654,7 @@ export const Settings: React.FC = () => {
         </div>
         {!collapsed.recurring && (
         <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             设置周期发生的收入/支出规则，可一键生成指定日期范围内的交易记录
           </p>
 
@@ -758,7 +758,7 @@ export const Settings: React.FC = () => {
               justifyContent: 'space-between', alignItems: 'center'
             }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: '14px', color: rule.transaction_type === 'expense' ? '#EF4444' : '#10B981' }}>
+                <div style={{ fontWeight: 600, fontSize: '14px', color: rule.transaction_type === 'expense' ? 'var(--expense)' : 'var(--income)' }}>
                   {rule.transaction_type === 'expense' ? '支出' : '收入'} ¥{rule.amount.toFixed(2)}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
@@ -771,7 +771,7 @@ export const Settings: React.FC = () => {
                   {rule.end_date ? ` 至 ${rule.end_date}` : ' (无截止)'}
                 </div>
               </div>
-              <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 8px', color: '#EF4444' }}
+              <button className="btn btn-secondary" style={{ fontSize: '12px', padding: '4px 8px', color: 'var(--expense)' }}
                 onClick={() => rule.id && handleDeleteRecurringRule(rule.id)}>删除</button>
             </div>
           ))}
@@ -786,7 +786,7 @@ export const Settings: React.FC = () => {
         </div>
         {!collapsed.notesGit && (
         <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             将笔记目录初始化为 Git 仓库，支持版本历史管理和推送到远程仓库
           </p>
 
@@ -839,7 +839,7 @@ export const Settings: React.FC = () => {
         </div>
         {!collapsed.audit && (
         <div className="settings-section-body">
-          <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
             记录每笔交易的创建、修改、删除操作及变更前后的数据快照
           </p>
           <button className="btn btn-secondary" onClick={async () => {
@@ -877,13 +877,13 @@ export const Settings: React.FC = () => {
                 </div>
                 {log.old_data && (
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    <span style={{ color: '#EF4444' }}>旧数据: </span>
+                    <span style={{ color: 'var(--expense)' }}>旧数据: </span>
                     <code style={{ fontSize: '11px', wordBreak: 'break-all' }}>{log.old_data}</code>
                   </div>
                 )}
                 {log.new_data && (
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    <span style={{ color: '#10B981' }}>新数据: </span>
+                    <span style={{ color: 'var(--income)' }}>新数据: </span>
                     <code style={{ fontSize: '11px', wordBreak: 'break-all' }}>{log.new_data}</code>
                   </div>
                 )}

@@ -102,9 +102,9 @@ export class MockBackend implements BackendAdapter {
   }
   async getSetting(k: string): Promise<string | null> { return this.settings.get(k) || null; }
   async setSetting(k: string, v: string): Promise<void> { this.settings.set(k, v); }
-  async syncData(c: SyncConfig): Promise<string> { return 'Mock: sync ok'; }
-  async syncDataIncremental(c: SyncConfig): Promise<string> { return 'Mock: incremental sync ok'; }
-  async testSyncConnection(c: SyncConfig): Promise<boolean> { return false; }
+  async syncData(_c: SyncConfig): Promise<string> { return 'Mock: sync ok'; }
+  async syncDataIncremental(_c: SyncConfig): Promise<string> { return 'Mock: incremental sync ok'; }
+  async testSyncConnection(_c: SyncConfig): Promise<boolean> { return false; }
   async getLastSyncTime(): Promise<string | null> { return null; }
   async getSyncMetadata(): Promise<SyncMetadata> { return { last_sync_version: 0, last_sync_time: '', checksum: '' }; }
   // ── 系统数据: JSON ──

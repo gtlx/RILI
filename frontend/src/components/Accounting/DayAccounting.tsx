@@ -200,7 +200,8 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
           <input type="text" className="input" style={{ width: '100%' }} value={txNote} onChange={e => setTxNote(e.target.value)} placeholder="备注 (可选)" />
         </div>
 
-        <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveTransaction}>
+        {/* 金额/分类未填时禁用,避免无效提交(原 alert 兜底保留) */}
+        <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveTransaction} disabled={!(parseFloat(amount) > 0 && category)}>
           {editingId ? '更新' : '保存'}
         </button>
       </div>
@@ -225,7 +226,7 @@ export const DayAccounting: React.FC<DayAccountingProps> = ({ date, onClose }) =
               <div className={`transaction-amount ${t.transaction_type}`}>
                 {t.transaction_type === 'income' ? '+' : '-'}{t.amount.toFixed(2)}
               </div>
-              <button className="btn btn-icon btn-sm" style={{ marginLeft: '8px', color: '#EF4444' }} onClick={e => { e.stopPropagation(); t.id && handleDeleteTx(t.id); }}>
+              <button className="btn btn-icon btn-sm" style={{ marginLeft: '8px', color: 'var(--expense)' }} onClick={e => { e.stopPropagation(); t.id && handleDeleteTx(t.id); }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
             </div>

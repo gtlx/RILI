@@ -71,16 +71,24 @@ export const DateDetailModal: React.FC<DateDetailModalProps> = ({ date, onClose 
   const dayExpense = dayTransactions.filter(t => t.transaction_type === 'expense').reduce((s, t) => s + t.amount, 0);
 
   const handleSaveNote = async () => {
-    await saveNote(dateStr, currentNoteContent);
-    await loadNotes();
-    setShowNoteEditor(false);
+    try {
+      await saveNote(dateStr, currentNoteContent);
+      await loadNotes();
+      setShowNoteEditor(false);
+    } catch (e) {
+      alert('保存失败: ' + String(e));
+    }
   };
 
   const handleDeleteNote = async () => {
     if (confirm('确定删除这篇笔记吗？')) {
-      await deleteNote(dateStr);
-      await loadNotes();
-      setShowNoteEditor(false);
+      try {
+        await deleteNote(dateStr);
+        await loadNotes();
+        setShowNoteEditor(false);
+      } catch (e) {
+        alert('删除失败: ' + String(e));
+      }
     }
   };
 

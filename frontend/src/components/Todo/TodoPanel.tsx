@@ -6,7 +6,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useTodoStore } from '../../stores/todoStore';
-import type { Todo } from '../../types/todo';
 
 interface TodoPanelProps {
   /** 当前查看的日期 */
