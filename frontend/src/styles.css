@@ -431,23 +431,35 @@ body {
   align-items: center;
   gap: 8px;
   padding: 16px;
+  position: relative;
 }
 
 @media (max-width: 768px) {
+  /* 移动端两行式:第一行视图切换按钮(‹ 月 周 ›),第二行年月标题居中,方格在标题下方 */
   .calendar-header {
-    grid-template-columns: 1fr auto 1fr;
-    gap: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 8px;
     padding: 8px;
   }
   .calendar-header .calendar-nav {
-    justify-content: flex-start;
+    flex-basis: 100%;
+    justify-content: center;
   }
   .calendar-header .calendar-title {
+    order: 2;
     text-align: center;
+    /* 标题独占一行且相对整体方格居中 */
+    flex: 1 1 100%;
+    font-size: 17px;
   }
   .calendar-header .calendar-header-right {
-    flex-shrink: 0;
-    justify-content: flex-end;
+    /* 移动端跳转按钮并入标题行(点击标题本身也能跳转),不占额外空间 */
+    position: absolute;
+    right: 12px;
+    top: 8px;
   }
 }
 
@@ -870,21 +882,6 @@ body {
   }
   .calendar-day-top {
     flex-shrink: 0;
-    /* 移动端两行布局:标记点第一行、日期数字第二行(内容整体下移,格子顶部留白)
-       flex-wrap 让标记点换行,order 调换顺序:markers 先、number 后 */
-    flex-wrap: wrap;
-    gap: 2px 6px;
-    padding-top: 2px;
-  }
-  .calendar-day-top .calendar-day-number {
-    order: 2;
-  }
-  .calendar-day-top .calendar-day-markers {
-    order: 1;
-    width: 100%;
-    justify-content: center;
-    /* 固定第一行高度:无标记时也占位,保证日期数字统一落在第二行 */
-    min-height: 8px;
   }
   .calendar-day-plugin {
     flex-shrink: 1;
