@@ -1625,6 +1625,13 @@ body {
   width: 100%;
   /* 行内容自适应变高时随格子 flex 分布 */
   flex-shrink: 1;
+  /* 日期数字与农历之间留呼吸感(第一行),行间 4px 统一 */
+  margin-top: 4px;
+}
+
+/* 节日/节气行:与上一行小间距(略大于徽章内gap,保持层级清晰) */
+.calendar-day-line + .calendar-day-line {
+  margin-top: 3px;
 }
 
 .plugin-badge {
